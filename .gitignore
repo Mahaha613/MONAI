@@ -162,3 +162,5 @@ runs
 *.pth
 
 *zarr/*
+
+BSHD_src_data/

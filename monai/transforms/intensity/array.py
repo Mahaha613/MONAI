@@ -990,6 +990,8 @@ class ScaleIntensityRange(Transform):
         """
         Apply the transform to `img`.
         """
+        # img = np.clip(img, -40, 120)
+
         img = convert_to_tensor(img, track_meta=get_track_meta())
         dtype = self.dtype or img.dtype
         if self.a_max - self.a_min == 0.0:
@@ -997,7 +999,6 @@ class ScaleIntensityRange(Transform):
             if self.b_min is None:
                 return img - self.a_min
             return img - self.a_min + self.b_min
-
         img = (img - self.a_min) / (self.a_max - self.a_min)
         if (self.b_min is not None) and (self.b_max is not None):
             img = img * (self.b_max - self.b_min) + self.b_min

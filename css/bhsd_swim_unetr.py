@@ -11,7 +11,7 @@ from monai.inferers import sliding_window_inference
 from monai.config import print_config
 from monai.metrics import DiceMetric
 from monai.networks.nets import SwinUNETR
-
+import numpy as np
 
 from css.utils import generate_data_list
 from monai.transforms import (
@@ -27,6 +27,8 @@ from monai.transforms import (
     Spacingd,
     RandRotate90d,
     EnsureTyped,
+    ClipIntensityPercentilesd,
+    Lambdad,
 )
 
 from monai.data import (
@@ -38,6 +40,10 @@ from monai.data import (
 )
 import os 
 import torch
+from monai.utils import set_determinism
+
+# 设置确定性行为和随机种子
+set_determinism(seed=42)
 
 # print_config()
 # directory = os.environ.get("MONAI_DATA_DIRECTORY")
@@ -51,14 +57,16 @@ num_samples = 4
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-train_transforms = Compose(
+train_transforms = Compose(       
     [
         LoadImaged(keys=["image", "label"], ensure_channel_first=True),
         # 截断
+        # Lambdad(keys=["image"], func=lambda x: np.clip(x, a_min=-4000, a_max=4000)),
+        ClipIntensityPercentilesd(keys=["image"], lower=5, upper=95, sharpness_factor=10),
         ScaleIntensityRanged(
             keys=["image"],
-            a_min=-175,
-            a_max=250,
+            a_min=-4000,
+            a_max=4000,
             b_min=0.0,
             b_max=1.0,
             clip=True,
@@ -74,7 +82,7 @@ train_transforms = Compose(
         RandCropByPosNegLabeld(
             keys=["image", "label"],
             label_key="label",
-            spatial_size=(96, 96, 96),
+            spatial_size=(128, 128, 32),
             pos=1,
             neg=1,
             num_samples=num_samples,
@@ -111,7 +119,10 @@ train_transforms = Compose(
 val_transforms = Compose(
     [
         LoadImaged(keys=["image", "label"], ensure_channel_first=True),
-        ScaleIntensityRanged(keys=["image"], a_min=-175, a_max=250, b_min=0.0, b_max=1.0, clip=True),
+        # Lambdad(keys=["image"], func=lambda x: np.clip(x, -4500, 4500)), # z轴上图像和标签维度不一致：image shape: torch.Size([1, 342, 342, 16]), label shape: torch.Size([1, 167, 167, 85])
+        # Clip(keys=["image"], min=-4500, max=4500),  # 使用Clip变换来剪裁像素值
+        ClipIntensityPercentilesd(keys=["image"], lower=5, upper=95, sharpness_factor=10),
+        ScaleIntensityRanged(keys=["image"], a_min=-4500, a_max=4500, b_min=0, b_max=1.0, clip=True),
         CropForegroundd(keys=["image", "label"], source_key="image"),
         Orientationd(keys=["image", "label"], axcodes="RAS"),
         Spacingd(
@@ -120,7 +131,7 @@ val_transforms = Compose(
             mode=("bilinear", "nearest"),
         ),
         EnsureTyped(keys=["image", "label"], device=device, track_meta=True),
-    ]
+    ], 
 )
 
 datalist = generate_data_list('BSHD_src_data/image/train',
@@ -131,8 +142,8 @@ val_files = generate_data_list('BSHD_src_data/image/test',
 train_ds = CacheDataset(
     data=datalist,
     transform=train_transforms,
-    cache_num=24,
-    cache_rate=1,
+    # cache_num=24,
+    cache_rate=1.0,
     num_workers=8)
 
 train_loader = ThreadDataLoader(train_ds, num_workers=0, batch_size=1, shuffle=True)
@@ -141,9 +152,9 @@ train_loader = ThreadDataLoader(train_ds, num_workers=0, batch_size=1, shuffle=T
 val_ds = CacheDataset(
     data=val_files, 
     transform=val_transforms, 
-    cache_num=6, 
+    # cache_num=24, 
     cache_rate=1.0, 
-    num_workers=4)
+    num_workers=8)
 
 val_loader = ThreadDataLoader(val_ds, num_workers=0, batch_size=1)
 
@@ -151,28 +162,25 @@ set_track_meta(False)
 # ******************************************generate data*****************************************************
 
 # ******************************************Check data shape and visualize************************************
-slice_map = {
-    "BHSD_image_097.nii.gz": 10,
-    "BHSD_image_097.nii.gz": 23,
-    "BHSD_image_097.nii.gz": 20,
-    "BHSD_image_097.nii.gz": 24,
-    "BHSD_image_097.nii.gz": 21,
-    "BHSD_image_097.nii.gz": 18,
-}
-case_num = 1
-img_name = os.path.split(val_ds[case_num]["image"].meta["filename_or_obj"])[1]
-img = val_ds[case_num]["image"]
-label = val_ds[case_num]["label"]
-img_shape = img.shape
-label_shape = label.shape
-print(f"image shape: {img_shape}, label shape: {label_shape}")
-plt.figure("image", (18, 6))
-plt.subplot(1, 2, 1)
-plt.title("image")
-plt.imshow(img[0, :, :, slice_map[img_name]].detach().cpu(), cmap="gray")
-plt.subplot(1, 2, 2)
-plt.title("label")
-plt.imshow(label[0, :, :, slice_map[img_name]].detach().cpu())
-plt.show()
+# case_num = 1
+# img = val_ds[case_num]["image"]
+# label = val_ds[case_num]["label"]
+# img_name = os.path.split(val_ds[case_num]["image"].meta["filename_or_obj"])[1]
+# label_name = os.path.split(val_ds[case_num]["label"].meta["filename_or_obj"])[1]
+# img_shape = img.shape
+# label_shape = label.shape
+# print(f"{img_name} image shape: {img_shape}, {label_name} label shape: {label_shape}")
+# for slice_idx in range(img_shape[-1]):
+#     if torch.sum(label[0, :, :, slice_idx]) != 0:
+#         plt.figure("image", (18, 6))
+#         plt.subplot(1, 2, 1)
+#         plt.title("image")
+#         plt.imshow(img[0, :, :, slice_idx].detach().cpu(), cmap="gray")
+#         plt.subplot(1, 2, 2)
+#         plt.title("label")
+#         plt.imshow(label[0, :, :, slice_idx].detach().cpu())
+#         plt.show()
+#         break
+        
 
 # ******************************************Check data shape and visualize************************************

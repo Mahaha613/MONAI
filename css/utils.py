@@ -73,6 +73,32 @@ def get_data_info(data_path, save_path):
     with open(save_path, 'w') as f:
         json.dump(data_info, f, indent=4)
     print(f"min_pixel_value:{pixel_value['min']}, min_pixel_value:{pixel_value['max']}")
+
+
+def clip_and_normalize(volume, min_val=-40, max_val=120):
+    # 将图像裁剪到指定范围内
+    volume = np.clip(volume, min_val, max_val)
+    # 将图像标准化到 [0, 1] 范围内
+    volume = (volume - 40) / 80
+    return volume
+
+
+def clip_norm_data(data_path, save_path):
+    data_list = glob.glob(f'{data_path}/*.nii.gz')
+    for data in data_list:
+        name = os.path.basename(data)
+        img = sitk.ReadImage(data)
+        src_spacing = img.GetSpacing()
+        src_direction = img.GetDirection()
+        src_origin = img.GetOrigin()
+        data = sitk.GetArrayFromImage(img)
+        clip_data = clip_and_normalize(data)
+        clip_img = sitk.GetImageFromArray(clip_data)
+        clip_img.SetDirection(src_direction)
+        clip_img.SetOrigin(src_origin)
+        clip_img.SetSpacing(src_spacing)
+        sitk.WriteImage(clip_img, f'{save_path}/{name}')
+    pass
             
 
 

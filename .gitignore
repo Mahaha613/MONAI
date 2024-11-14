@@ -165,4 +165,6 @@ runs
 
 BSHD_src_data/
 
+*.pt
+
 

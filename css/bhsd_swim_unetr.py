@@ -147,7 +147,7 @@ train_ds = CacheDataset(
     cache_rate=1.0,
     num_workers=8)
 
-train_loader = ThreadDataLoader(train_ds, num_workers=0, batch_size=2, shuffle=True)
+train_loader = ThreadDataLoader(train_ds, num_workers=0, batch_size=1, shuffle=True)
 # print(len(train_loader))
 
 val_ds = CacheDataset(

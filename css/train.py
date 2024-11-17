@@ -32,7 +32,7 @@ def train(train_loader, val_loader, args):
     torch.backends.cudnn.benchmark = True
     model = css_model(args.model, device=args.device)
     loss_function = DiceCELoss(to_onehot_y=True, softmax=True)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4, weight_decay=1e-5)
+    optimizer = torch.optim.AdamW(model.parameters(), args.lr, args.weight_decay)
     scaler = torch.cuda.amp.GradScaler()
     dice_val_best = 0.0
     global_step_best = 0
@@ -131,6 +131,8 @@ def main():
     paser.add_argument('--model', choices=['swin_unetr'], default='swin_unetr')
     paser.add_argument('--seed', default=42)
     paser.add_argument('--fig_save_path', default='css/train.png')
+    paser.add_argument('--lr', default=1e-4)
+    paser.add_argument('--weight_decay', default=1e-5)
     args = paser.parse_args()
 
 

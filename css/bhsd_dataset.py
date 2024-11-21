@@ -111,7 +111,7 @@ val_transforms = Compose(
     ], 
 )
 
-def generate_data():
+def generate_data(args):
     datalist = generate_data_list('BSHD_src_data/image/train',
                                 'BSHD_src_data/label/train')
     val_files = generate_data_list('BSHD_src_data/image/test',
@@ -124,7 +124,7 @@ def generate_data():
         cache_rate=1.0,
         num_workers=8)
 
-    train_loader = ThreadDataLoader(train_ds, num_workers=0, batch_size=1, shuffle=True)
+    train_loader = ThreadDataLoader(train_ds, num_workers=args.num_workers, batch_size=args.batch_size, shuffle=True)
 
     val_ds = CacheDataset(
         data=val_files, 
@@ -133,7 +133,7 @@ def generate_data():
         cache_rate=1.0, 
         num_workers=8)
 
-    val_loader = ThreadDataLoader(val_ds, num_workers=0, batch_size=1)
+    val_loader = ThreadDataLoader(val_ds, num_workers=args.num_workers, batch_size=args.batch_size)
     set_track_meta(False)
     return train_ds, train_loader, val_ds, val_loader
 

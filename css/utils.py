@@ -11,6 +11,7 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator, MultipleLocator
 
+
 def generate_data_list(img_path, label_path, save_path=''):
     img_list = glob.glob(f'{img_path}/*.nii.gz')
     label_list = glob.glob(f'{label_path}/*.nii.gz')
@@ -99,7 +100,9 @@ def clip_norm_data(data_path, save_path):
         clip_img.SetSpacing(src_spacing)
         sitk.WriteImage(clip_img, f'{save_path}/{name}')
     pass
-            
+
+
+        
 
 
 
@@ -110,6 +113,7 @@ if __name__ == '__main__':
     #                     'BSHD_src_data/test.json')
 
     # get_data_info('BSHD_src_data/image/test', 'BSHD_src_data/test_data_info.json')
+    
     pass
 
 

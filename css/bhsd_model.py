@@ -1,11 +1,11 @@
 from monai.networks.nets import SwinUNETR
 import torch
 
-def css_model(model_name, device):
+def css_model(model_name, args, device):
     if model_name == 'swin_unetr':
         # ******************************************Create Swin UNETR model*******************************************
         model = SwinUNETR(
-            img_size=(64, 64, 64),
+            img_size=args.ref_window,
             in_channels=1,
             out_channels=6,
             feature_size=48,

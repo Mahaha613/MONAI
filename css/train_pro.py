@@ -5,7 +5,7 @@ os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
 os.environ['CUDA_VISIBLE_DEVICES'] = "1"
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-
+from glob import glob
 from monai.losses import DiceCELoss
 from monai.inferers import sliding_window_inference
 
@@ -34,7 +34,7 @@ def train(train_loader, val_loader, args, writer):
     model = css_model(args.model, device=args.device)
     loss_function = DiceCELoss(to_onehot_y=True, softmax=True)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epoch)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epoch, eta_min=1e-6)
     scaler = torch.cuda.amp.GradScaler()
     dice_val_best = 0.0
     global_step_best = 0
@@ -43,13 +43,12 @@ def train(train_loader, val_loader, args, writer):
     model.train()
     epoch_loss = 0
     step = 0
-    epoch_iterator = tqdm(train_loader, desc="Training (X / X Steps) (loss=X.X)", dynamic_ncols=True)
+    # epoch_iterator = tqdm(train_loader, desc="Training (X / X Steps) (loss=X.X)", dynamic_ncols=True)
     for epoch_idx in range(args.epoch):
+        epoch_iterator = tqdm(train_loader, desc="Training (X / X Steps) (loss=X.X)", dynamic_ncols=True)
         for step, batch in enumerate(epoch_iterator):
             step += 1
             x, y = (batch["image"].cuda(), batch["label"].cuda())
-            if 6 in torch.unique(y):
-                print(f'label: {torch.unique(y)}')
             with torch.cuda.amp.autocast():
                 logit_map = model(x)
                 loss = loss_function(logit_map, y)
@@ -59,15 +58,13 @@ def train(train_loader, val_loader, args, writer):
             scaler.step(optimizer)
             scaler.update()
             optimizer.zero_grad()
-            scheduler.step()
             writer.add_scalar('Train/Loss', loss.item(), epoch_idx * len(train_loader) + step)
-            writer.add_scalar('Train/LR', scheduler.get_last_lr()[0], epoch_idx)
             epoch_iterator.set_description(  
                 f"Training ({epoch_idx} / {args.epoch} Steps) (loss={loss:2.5f})"
             )
             if (step % args.eval_num == 0 and step != 0) or epoch_idx == args.epoch:
-                epoch_iterator_val = tqdm(val_loader, desc="Validate (X / X Steps) (dice=X.X)", dynamic_ncols=True)
-                dice_val, mean_dice_val_without_bg, class_dice_vals = validation(model, epoch_iterator_val, epoch_idx, writer)
+                # epoch_iterator_val = tqdm(val_loader, desc="Validate (X / X Steps) (dice=X.X)", dynamic_ncols=True)
+                dice_val, mean_dice_val_without_bg, class_dice_vals = validation(model, val_loader, epoch_idx, args)
                 writer.add_scalar('Validate/mean_Dice_with_bg', dice_val, epoch_idx)
                 writer.add_scalar('Validate/mean_Dice_without_bg', mean_dice_val_without_bg, epoch_idx)
                 for i, dice_score in enumerate(class_dice_vals):
@@ -79,28 +76,33 @@ def train(train_loader, val_loader, args, writer):
                 if dice_val > dice_val_best:
                     dice_val_best = dice_val
                     global_step_best = epoch_idx
-                    torch.save(model.state_dict(), os.path.join(args.root_dir, "best_metric_model.pth"))
+                    torch.save(model.state_dict(), os.path.join(args.root_dir, f'{epoch_idx}_best_metric_model.pth'))
                     print(
                         "Model Was Saved ! Current Best Avg. Dice: {} Current Avg. Dice: {}".format(dice_val_best, dice_val))
                 else:
                     print(
                         "Model Was Not Saved ! Current Best Avg. Dice: {} Current Avg. Dice: {}".format(dice_val_best, dice_val))
+        scheduler.step()
+        writer.add_scalar('Train/LR', scheduler.get_last_lr()[0], epoch_idx)
+
+
     return dice_val_best, global_step_best, epoch_loss_values, metric_values
 # ******************************************train*************************************************************
 
 
-def validation(model, epoch_iterator_val, epoch_idx, writer):
+def validation(model, val_loader, epoch_idx, args):
     model.eval()
     post_label = AsDiscrete(to_onehot=6)
     post_pred = AsDiscrete(argmax=True, to_onehot=6)
     dice_metric = DiceMetric(include_background=True, reduction="mean", get_not_nans=False, num_classes=6)
     classwise_dice = DiceMetric(include_background=True, reduction='none', get_not_nans=False, num_classes=6)
+    epoch_iterator_val = tqdm(val_loader, desc="Validate (X / X Steps) (dice=X.X)", dynamic_ncols=True)
 
     with torch.no_grad():
         for batch in epoch_iterator_val:
             val_inputs, val_labels = (batch["image"].cuda(), batch["label"].cuda())
             with torch.cuda.amp.autocast():
-                val_outputs = sliding_window_inference(val_inputs, (96, 96, 32), 2, model)
+                val_outputs = sliding_window_inference(val_inputs, args.ref_window, 2, model)
             val_labels_list = decollate_batch(val_labels)
             val_labels_convert = [post_label(val_label_tensor) for val_label_tensor in val_labels_list]
             val_outputs_list = decollate_batch(val_outputs)
@@ -156,16 +158,20 @@ def count_class_num(val_loader):
 def main():
     paser = argparse.ArgumentParser(description="Train Swin_unetr with BHSD dataset")
     # paser.add_argument('--device', default=0, required=True, help="choose a device for train, witch can be an int or list or 'cpu'")
-    paser.add_argument('--root_dir', default='css/experiment/swim_unetr/11.20', help="dir of saving files")
+    paser.add_argument('--root_dir', default='css/experiment/swim_unetr/11.21', help="dir of saving files")
+    paser.add_argument('--data_path', default='BSHD_src_data/preprocessed_image')
     paser.add_argument('--epoch', default=3000)
     paser.add_argument('--eval_num', default=16)
     paser.add_argument('--model', choices=['swin_unetr'], default='swin_unetr')
     paser.add_argument('--seed', default=42)
     paser.add_argument('--fig_save_path', default='css/train_pro.png')
-    paser.add_argument('--lr', default=1e-4, help="start learning rate")
+    paser.add_argument('--lr', default=1e-3, help="start learning rate")
     paser.add_argument('--batch_size', default=1)
     paser.add_argument('--weight_decay', default=1e-4)
     paser.add_argument('--num_workers', default=0)
+    paser.add_argument('--test', action='store_true')
+    paser.add_argument('--train_trs', choices=['my_tr_trs', 'source_tr_trs'], default='source_tr_trs')
+    paser.add_argument('--ref_window', default=(128, 128, 32))
     # paser.add_argument('--scehduler', action='store_true')
     args = paser.parse_args()
     
@@ -183,9 +189,19 @@ def main():
     # print(class_list)  # {'1': 13, '2': 62, '3': 54, '4': 51, '5': 35}
     
     set_track_meta(False)
-    dice_val_best, global_step_best, epoch_loss_values, metric_values = train(train_loader, val_loader, args,writer=writer)
-    print(f"train completed, best_metric: {dice_val_best:.4f} " f"at iteration: {global_step_best}")
-    draw_fig(epoch_loss_values, metric_values, args)
+    if not args.test:
+        dice_val_best, global_step_best, epoch_loss_values, metric_values = train(train_loader, val_loader, args,writer=writer)
+        print(f"train completed, best_metric: {dice_val_best:.4f} " f"at iteration: {global_step_best}")
+        draw_fig(epoch_loss_values, metric_values, args)
+    else:
+        weight_path = glob(os.path.join(args.root_dir, "best*.pth"))
+        assert os.path.isfile(weight_path), "weight path is not a file"
+        model = css_model(args.model, device)
+        model.load_state_dict(torch.load(weight_path))
+        mean_dice_val_include_bg, mean_dice_val_without_bg, dice_values = validation(model, val_loader, 0)
+        print(f"mean_dice_val_include_bg: {mean_dice_val_include_bg:.4f}, mean_dice_val_without_bg: {mean_dice_val_without_bg:.4f}, dice_values: {dice_values}")
+
 
 if __name__ == '__main__':
+    os.environ['CUDA_VISIBLE_DEVICES'] = "1"
     main()

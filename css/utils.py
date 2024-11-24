@@ -10,7 +10,7 @@ import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator, MultipleLocator
-
+from tqdm import tqdm
 
 def generate_data_list(img_path, label_path, save_path=''):
     img_list = glob.glob(f'{img_path}/*.nii.gz')
@@ -86,7 +86,10 @@ def clip_and_normalize(volume, min_val=-40, max_val=120):
 
 def clip_norm_data(data_path, save_path):
     data_list = glob.glob(f'{data_path}/*.nii.gz')
-    for data in data_list:
+    data_list = tqdm(data_list, desc=f'processing: x / 96')
+    for i, data in enumerate(data_list):
+        i = i + 1
+        data_list.set_description(f'processing: {i} / 96')
         name = os.path.basename(data)
         img = sitk.ReadImage(data)
         src_spacing = img.GetSpacing()
@@ -99,7 +102,7 @@ def clip_norm_data(data_path, save_path):
         clip_img.SetOrigin(src_origin)
         clip_img.SetSpacing(src_spacing)
         sitk.WriteImage(clip_img, f'{save_path}/{name}')
-    pass
+    
 
 
         
@@ -113,7 +116,8 @@ if __name__ == '__main__':
     #                     'BSHD_src_data/test.json')
 
     # get_data_info('BSHD_src_data/image/test', 'BSHD_src_data/test_data_info.json')
-    
+    # clip_norm_data(data_path='./BSHD_src_data/image/test',
+                    # save_path='./BSHD_src_data/preprocessed_image/test')
     pass
 
 

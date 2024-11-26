@@ -31,13 +31,10 @@ import matplotlib.pyplot as plt
 set_determinism(seed=42)
 
 # ******************************************generate data*****************************************************
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
 def get_transforms(trans, device, is_train=True):
     my_tr_trs = Compose(       
         [
-            LoadImaged(keys=["image", "label"], ensure_channel_first=True),
+            LoadImaged(keys=["image", "label"], ensure_channel_first=True),  # (h, w, d)
             # 截断
             # Lambdad(keys=["image"], func=lambda x: np.clip(x, a_min=-4000, a_max=4000)),
             ClipIntensityPercentilesd(keys=["image"], lower=5, upper=95, sharpness_factor=10),
@@ -53,14 +50,14 @@ def get_transforms(trans, device, is_train=True):
             Orientationd(keys=["image", "label"], axcodes="RAS"),
             Spacingd(
                 keys=["image", "label"],
-                pixdim=(1.5, 1.5, 2.0),
+                pixdim=(1.5, 1.5, 2.0),  # (h, w, d)
                 mode=("bilinear", "nearest"),
             ),
             EnsureTyped(keys=["image", "label"], device=device, track_meta=False),
             RandCropByPosNegLabeld(
                 keys=["image", "label"],
                 label_key="label",
-                spatial_size=(96, 96, 32),  # (C,H,W,[D])
+                spatial_size=(96, 96, 32),  # (H,W,D)
                 pos=2,
                 neg=1,
                 num_samples=4,
@@ -247,8 +244,58 @@ def vis_data():
     # ******************************************Check data shape and visualize************************************
 
 
-if __name__ == '__main__':
-    # vis_data()
-    pass
+# if __name__ == '__main__':
+# #     # vis_data()
+#     import SimpleITK as sitk
+#     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+#     source_tr_trs = Compose(       
+#             [
+#                 LoadImaged(keys=["image", "label"], ensure_channel_first=True),
+#                 # CropForegroundd(keys=["image", "label"], source_key="image", margin=5),  # 消融，功能与RandCropByPosNegLabeld类似
+#                 # Orientationd(keys=["image", "label"], axcodes="RAS"),
+#                 Spacingd(
+#                     keys=["image", "label"],
+#                     pixdim=(1.0, 1.0, 1.0),
+#                     mode=("bilinear", "nearest"),
+#                 ),
+#                 # EnsureTyped(keys=["image", "label"], device=device, track_meta=False),
+#                 # RandCropByPosNegLabeld(
+#                 #     keys=["image", "label"],
+#                 #     label_key="label",
+#                 #     spatial_size=(96, 96, 32),  # (C,H,W,[D])
+#                 #     pos=2,
+#                 #     neg=1,
+#                 #     num_samples=4,
+#                 #     image_key="image",
+#                 #     image_threshold=0,
+#                 # )
+#             ]
+#         )
+#     data_list = [[{"image": "BSHD_src_data/preprocessed_image/train/BHSD_image_000.nii.gz", 
+#                    "label": "BSHD_src_data/label/train/BHSD_label_000.nii.gz"}]]
+#     train_ds = CacheDataset(
+#         data=data_list,
+#         transform=source_tr_trs,
+#         # cache_num=24,
+#         cache_rate=1.0,
+#         num_workers=0)
+#     train_loader = ThreadDataLoader(train_ds, 
+#                                     num_workers=0, 
+#                                     batch_size=1, 
+#                                     shuffle=True)
+#     for train_data in train_loader:
+#         print(train_data['image'].shape)
+
+#     img = sitk.ReadImage('BSHD_src_data/preprocessed_image/train/BHSD_image_000.nii.gz')
+#     origin = img.GetOrigin()
+#     Spacing = img.GetSpacing()
+#     direction = img.GetDirection()
+#     # print(origin)
+#     print(Spacing)
+#     # print(direction)
+#     img_array = sitk.GetArrayFromImage(img)  #(d, h, w)
+#     print(img_array.shape)
+    
+#     pass
     
 

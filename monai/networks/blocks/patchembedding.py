@@ -179,7 +179,7 @@ class PatchEmbed(nn.Module):
         patch_size = ensure_tuple_rep(patch_size, spatial_dims)
         self.patch_size = patch_size
         self.embed_dim = embed_dim
-        self.proj = Conv[Conv.CONV, spatial_dims](
+        self.proj = Conv[Conv.CONV, spatial_dims](  # conv3d(1, 48, keenel_size=(2,2,2), stride=(2,2,2)))
             in_channels=in_chans, out_channels=embed_dim, kernel_size=patch_size, stride=patch_size
         )
         if norm_layer is not None:
@@ -205,7 +205,7 @@ class PatchEmbed(nn.Module):
             if h % self.patch_size[0] != 0:
                 x = F.pad(x, (0, 0, 0, self.patch_size[0] - h % self.patch_size[0]))
 
-        x = self.proj(x)
+        x = self.proj(x)  # conv3d(1, 48, keenel_size=(2,2,2), stride=(2,2,2)))  torch.Size([4, 48, 48, 48, 16])
         if self.norm is not None:
             x_shape = x.size()
             x = x.flatten(2).transpose(1, 2)

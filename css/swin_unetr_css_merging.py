@@ -76,6 +76,7 @@ class SwinUNETR(nn.Module):
         spatial_dims: int = 3,
         downsample="merging",
         use_v2=False,
+        merging_type=None,
     ) -> None:
         """
         Args:
@@ -118,6 +119,7 @@ class SwinUNETR(nn.Module):
         img_size = ensure_tuple_rep(img_size, spatial_dims)
         patch_sizes = ensure_tuple_rep(self.patch_size, spatial_dims)
         window_size = ensure_tuple_rep(7, spatial_dims)
+        self.merging_type = merging_type
 
         if spatial_dims not in (2, 3):
             raise ValueError("spatial dimension should be 2 or 3.")
@@ -153,8 +155,9 @@ class SwinUNETR(nn.Module):
             norm_layer=nn.LayerNorm,
             use_checkpoint=use_checkpoint,
             spatial_dims=spatial_dims,
-            downsample=look_up_option(downsample, MERGING_MODE) if isinstance(downsample, str) else downsample,
+            downsample=look_up_option(downsample, MERGING_MODE) if isinstance(downsample, str) else downsample,  # 'merging'
             use_v2=use_v2,
+            merging_type=self.merging_type,
         )
 
         self.encoder1 = UnetrBasicBlock(
@@ -318,20 +321,20 @@ class SwinUNETR(nn.Module):
                 f" must be divisible by {self.patch_size}**5."
             )
 
-    def forward(self, x_in):  # x_in:(4, 1, 96, 96, 32)
+    def forward(self, x_in):
         if not torch.jit.is_scripting() and not torch.jit.is_tracing():
             self._check_input_size(x_in.shape[2:])
         hidden_states_out = self.swinViT(x_in, self.normalize)
-        enc0 = self.encoder1(x_in)  # encoder都不改变HWD，与输入相同，只是将C改变为feature_size (4, 48, 96, 96, 32)
-        enc1 = self.encoder2(hidden_states_out[0])  # (4, 48, 48, 48, 16)
-        enc2 = self.encoder3(hidden_states_out[1])  # (4, 96, 24, 24, 8)
-        enc3 = self.encoder4(hidden_states_out[2])  # (4, 192, 12, 12, 4)
-        dec4 = self.encoder10(hidden_states_out[4])  # (4, 768, 3, 3, 1)
-        dec3 = self.decoder5(dec4, hidden_states_out[3])  # (4, 384, 6, 6, 2)
-        dec2 = self.decoder4(dec3, enc3)  # (4, 192, 12, 12, 4)
-        dec1 = self.decoder3(dec2, enc2)  # (4, 96, 24, 24, 8)
-        dec0 = self.decoder2(dec1, enc1)  # (4, 48, 48, 48, 16)
-        out = self.decoder1(dec0, enc0)   # (4, 48, 96, 96, 32)
+        enc0 = self.encoder1(x_in)
+        enc1 = self.encoder2(hidden_states_out[0])
+        enc2 = self.encoder3(hidden_states_out[1])
+        enc3 = self.encoder4(hidden_states_out[2])
+        dec4 = self.encoder10(hidden_states_out[4])
+        dec3 = self.decoder5(dec4, hidden_states_out[3])
+        dec2 = self.decoder4(dec3, enc3)
+        dec1 = self.decoder3(dec2, enc2)
+        dec0 = self.decoder2(dec1, enc1)
+        out = self.decoder1(dec0, enc0)
         logits = self.out(out)
         return logits
 
@@ -753,7 +756,12 @@ class PatchMergingV2(nn.Module):
 
 
 class PatchMerging(PatchMergingV2):
-    """The `PatchMerging` module previously defined in v0.9.0."""
+    """The `PatchMerging` module previously defined in v0.9.0.
+    merging_type: int, default to 0. Choices:[conv, maxpool, avgpool, maxavgpool]
+    """
+    def __init__(self, dim: int, norm_layer: type[LayerNorm] = nn.LayerNorm, spatial_dims: int = 3, merging_type=None):
+        super().__init__(dim, norm_layer, spatial_dims)
+        self.merging_type = merging_type
     def css_add_conv(self, x):
         x = torch.permute(x, (0, 4, 1, 2, 3))
         add_conv = Convolution(
@@ -768,8 +776,9 @@ class PatchMerging(PatchMergingV2):
                 ).cuda().half() 
         output = torch.permute(add_conv(x), (0, 2, 3, 4, 1))
         return output
-    def css_max_avg_pool(self, x):
+    def css_max_avg_pool(self, x, merging):
         x = torch.permute(x, (0, 4, 1, 2, 3))  # 重新排列为 (batch, channels, depth, height, width)
+        shape_c = x.shape[1]
         max_avg_pool = MaxAvgPool(
             spatial_dims=3,              # 3D 池化
             kernel_size=(2, 2, 2),       # 池化核大小
@@ -778,6 +787,17 @@ class PatchMerging(PatchMergingV2):
         ).cuda().half()                  # 使用半精度浮点数
 
         output = max_avg_pool(x)
+        if merging == "maxpool":
+            print("using maxpool")
+            output = output[:, 0:shape_c, :, :, :]
+        elif merging == "avgpool":
+            print("using avgpool")
+            output = output[:, shape_c:, :, :, :]
+        elif merging == "maxavgpool":
+            print("using max_avg_pool")
+            output = 0.5 * output[:, 0:shape_c, :, :, :] + 0.5 * output[:, shape_c:, :, :, :]
+        else:
+            raise ValueError("merging type must be maxpool or avgpool.")
 
         output = torch.permute(output, (0, 2, 3, 4, 1)) 
         return output
@@ -792,7 +812,6 @@ class PatchMerging(PatchMergingV2):
         pad_input = (h % 2 == 1) or (w % 2 == 1) or (d % 2 == 1)
         if pad_input:
             x = F.pad(x, (0, 0, 0, w % 2, 0, h % 2, 0, d % 2))
-        x_add = self.css_add_conv(x)
         x0 = x[:, 0::2, 0::2, 0::2, :]
         x1 = x[:, 1::2, 0::2, 0::2, :]
         x2 = x[:, 0::2, 1::2, 0::2, :]
@@ -801,7 +820,25 @@ class PatchMerging(PatchMergingV2):
         x5 = x[:, 0::2, 1::2, 0::2, :]
         x6 = x[:, 0::2, 0::2, 1::2, :]
         x7 = x[:, 1::2, 1::2, 1::2, :]
-        x = torch.cat([x0+x_add, x1+x_add, x2+x_add, x3+x_add, x4+x_add, x5+x_add, x6+x_add, x7+x_add], -1)
+        if self.merging_type:
+            if self.merging_type == "conv":
+                print("using convpool")
+                x_add = self.css_add_conv(x)
+                x = torch.cat([x0+x_add, x1+x_add, x2+x_add, x3+x_add, x4+x_add, x5+x_add, x6+x_add, x7+x_add], -1)
+            elif self.merging_type == "maxpool":
+                x_add = self.css_max_avg_pool(x, "maxpool")
+                x = torch.cat([x0+x_add, x1+x_add, x2+x_add, x3+x_add, x4+x_add, x5+x_add, x6+x_add, x7+x_add], -1)
+            elif self.merging_type == "avgpool":
+                x_add = self.css_max_avg_pool(x, "avgpool")
+                x = torch.cat([x0+x_add, x1+x_add, x2+x_add, x3+x_add, x4+x_add, x5+x_add, x6+x_add, x7+x_add], -1)
+            elif self.merging_type == "maxavgpool":
+                x_add = self.css_max_avg_pool(x, "maxavgpool")
+                x = torch.cat([x0+x_add, x1+x_add, x2+x_add, x3+x_add, x4+x_add, x5+x_add, x6+x_add, x7+x_add], -1)
+            else:
+                raise ValueError("merging_type must be one of 'conv', 'maxpool', 'avgpool'.")
+        else: 
+            print("using default merging")
+            x = torch.cat([x0, x1, x2, x3, x4, x5, x6, x7], -1)
         x = self.norm(x)
         x = self.reduction(x)
         return x
@@ -872,6 +909,7 @@ class BasicLayer(nn.Module):
         norm_layer: type[LayerNorm] = nn.LayerNorm,
         downsample: nn.Module | None = None,
         use_checkpoint: bool = False,
+        merging_type=None
     ) -> None:
         """
         Args:
@@ -890,6 +928,7 @@ class BasicLayer(nn.Module):
         """
 
         super().__init__()
+        self.merging_type = merging_type
         self.window_size = window_size
         self.shift_size = tuple(i // 2 for i in window_size)
         self.no_shift = tuple(0 for i in window_size)
@@ -915,7 +954,7 @@ class BasicLayer(nn.Module):
         )
         self.downsample = downsample
         if callable(self.downsample):
-            self.downsample = downsample(dim=dim, norm_layer=norm_layer, spatial_dims=len(self.window_size))
+            self.downsample = downsample(dim=dim, norm_layer=norm_layer, spatial_dims=len(self.window_size), merging_type=self.merging_type)
 
     def forward(self, x):
         x_shape = x.size()
@@ -977,6 +1016,7 @@ class SwinTransformer(nn.Module):
         spatial_dims: int = 3,
         downsample="merging",
         use_v2=False,
+        merging_type=None
     ) -> None:
         """
         Args:
@@ -1007,6 +1047,9 @@ class SwinTransformer(nn.Module):
         self.patch_norm = patch_norm
         self.window_size = window_size
         self.patch_size = patch_size
+
+        self.merging_type = merging_type
+
         self.patch_embed = PatchEmbed(
             patch_size=self.patch_size,
             in_chans=in_chans,
@@ -1027,6 +1070,7 @@ class SwinTransformer(nn.Module):
             self.layers3c = nn.ModuleList()
             self.layers4c = nn.ModuleList()
         down_sample_mod = look_up_option(downsample, MERGING_MODE) if isinstance(downsample, str) else downsample
+
         for i_layer in range(self.num_layers):
             layer = BasicLayer(
                 dim=int(embed_dim * 2**i_layer),
@@ -1041,6 +1085,7 @@ class SwinTransformer(nn.Module):
                 norm_layer=norm_layer,
                 downsample=down_sample_mod,
                 use_checkpoint=use_checkpoint,
+                merging_type=self.merging_type,
             )
             if i_layer == 0:
                 self.layers1.append(layer)

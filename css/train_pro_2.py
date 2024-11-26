@@ -48,7 +48,7 @@ def train(train_loader, val_loader, args, writer):
         epoch_iterator = tqdm(train_loader, desc="Training (X / X Steps) (loss=X.X)", dynamic_ncols=True)
         for step, batch in enumerate(epoch_iterator):
             step += 1
-            x, y = (batch["image"].cuda(), batch["label"].cuda())
+            x, y = (batch["image"].to(args.device), batch["label"].to(args.device))
             with torch.cuda.amp.autocast():
                 logit_map = model(x)
                 loss = loss_function(logit_map, y)
@@ -100,7 +100,7 @@ def validation(model, val_loader, epoch_idx, args):
 
     with torch.no_grad():
         for batch in epoch_iterator_val:
-            val_inputs, val_labels = (batch["image"].cuda(), batch["label"].cuda())
+            val_inputs, val_labels = (batch["image"].to(args.device), batch["label"].to(args.device))
             with torch.cuda.amp.autocast():
                 val_outputs = sliding_window_inference(val_inputs, args.ref_window, 2, model)
             val_labels_list = decollate_batch(val_labels)
@@ -158,10 +158,10 @@ def count_class_num(val_loader):
 def main():
     paser = argparse.ArgumentParser(description="Train Swin_unetr with BHSD dataset")
     # paser.add_argument('--device', default=0, required=True, help="choose a device for train, witch can be an int or list or 'cpu'")
-    paser.add_argument('--root_dir', default='css/experiment/swim_unetr/11.24', help="dir of saving files")
+    paser.add_argument('--root_dir', default='css/experiment/swim_unetr/11.262', help="dir of saving files")
     paser.add_argument('--data_path', default='BSHD_src_data/preprocessed_image')
-    paser.add_argument('--epoch', default=3000)
-    paser.add_argument('--eval_num', default=48)
+    paser.add_argument('--epoch', default=300)
+    paser.add_argument('--eval_num', default=96)
     paser.add_argument('--model', choices=['swin_unetr'], default='swin_unetr')
     paser.add_argument('--seed', default=42)
     paser.add_argument('--fig_save_path', default='css/train_pro.png')
@@ -172,12 +172,14 @@ def main():
     paser.add_argument('--test', action='store_true')
     paser.add_argument('--transforms', choices=['my_tr_trs', 'source_tr_trs'], default='source_tr_trs')
     paser.add_argument('--ref_window', default=(96, 96, 32))
+    paser.add_argument('--merging_type', choices=['maxpool', 'avgpool', 'maxavgpool', 'conv'], default=None)
     # paser.add_argument('--scehduler', action='store_true')
     args = paser.parse_args()
     
     log_dir = os.path.join(args.root_dir, "logs")
     writer = SummaryWriter(log_dir=log_dir)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # device = torch.device("cuda:1")
     args.device = device
     name_list = ['BG', 'EDH', 'IPH', 'IVH', 'SAH', 'SDH']
     args.name_list = name_list

@@ -1,4 +1,5 @@
-from monai.networks.nets import SwinUNETR
+# from monai.networks.nets import SwinUNETR
+from css.swin_unetr_css_merging import SwinUNETR
 import torch
 
 def css_model(model_name, args, device):
@@ -11,6 +12,7 @@ def css_model(model_name, args, device):
             feature_size=48,
             use_checkpoint=True,
             # use_v2=True,
+            merging_type=args.merging_type
         ).to(device)
 
         weight = torch.load("css/model_swinvit.pt")

@@ -1,5 +1,5 @@
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = "1"
+os.environ['CUDA_VISIBLE_DEVICES'] = "2"
 import argparse
 from torch.utils.tensorboard import SummaryWriter
 os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
@@ -31,10 +31,10 @@ from css.bhsd_model import css_model
 
 def train(train_loader, val_loader, args, writer):
     torch.backends.cudnn.benchmark = True
-    model = css_model(args.model, args, device=args.device)
+    model = css_model(args)
     loss_function = DiceCELoss(to_onehot_y=True, softmax=True)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epoch, eta_min=1e-5)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epoch, eta_min=1e-6)
     scaler = torch.cuda.amp.GradScaler()
     dice_val_best = 0.0
     global_step_best = 0
@@ -160,7 +160,7 @@ def main():
     # paser.add_argument('--device', default=0, required=True, help="choose a device for train, witch can be an int or list or 'cpu'")
     paser.add_argument('--root_dir', default='css/experiment/swim_unetr/11.262', help="dir of saving files")
     paser.add_argument('--data_path', default='BSHD_src_data/preprocessed_image')
-    paser.add_argument('--epoch', default=300)
+    paser.add_argument('--epoch', default=500)
     paser.add_argument('--eval_num', default=96)
     paser.add_argument('--model', choices=['swin_unetr'], default='swin_unetr')
     paser.add_argument('--seed', default=42)

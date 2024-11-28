@@ -1,0 +1,2 @@
+export CUDA_VISIBLE_DEVICES=0
+nohup python /home/xiang/user/user_group/caoshangshang/RushBin/MONAI/css/train_avg.py --root_dir=css/experiment/swim_unetr/11.27_avg_merge_default_trans_500_eps --fig_save_path=css/train_avg.png --merging_type='avgpool' > css/train_11_27_avg_merge.log 2>&1 &

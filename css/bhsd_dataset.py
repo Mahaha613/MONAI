@@ -186,6 +186,24 @@ def get_transforms(trans, device, is_train=True):
 
 
 def generate_data(args):
+    if args.test:
+        val_files = generate_data_list(os.path.join(args.data_path, 'test'),
+                                'BSHD_src_data/label/test')
+        val_ds = CacheDataset(
+        data=val_files, 
+        transform=get_transforms(args.transforms, args.device, is_train=False), 
+        # cache_num=24, 
+        cache_rate=1.0, 
+        num_workers=args.num_workers)
+
+        val_loader = ThreadDataLoader(val_ds, 
+                                    num_workers=args.num_workers, 
+                                    batch_size=args.batch_size,
+                                    # collate_fn=pad_list_data_collate, # batch_size >1 时，collate_fn自动填充不一样的形状
+                                    )
+        set_track_meta(False)
+        return val_loader
+    
     datalist = generate_data_list(os.path.join(args.data_path, 'train'),
                                 'BSHD_src_data/label/train')
     val_files = generate_data_list(os.path.join(args.data_path, 'test'),

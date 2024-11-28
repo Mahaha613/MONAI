@@ -762,39 +762,36 @@ class PatchMerging(PatchMergingV2):
     def __init__(self, dim: int, norm_layer: type[LayerNorm] = nn.LayerNorm, spatial_dims: int = 3, merging_type=None):
         super().__init__(dim, norm_layer, spatial_dims)
         self.merging_type = merging_type
+        self.add_conv = Convolution(
+                spatial_dims=3,               # 3D 卷积
+                in_channels=dim,              # 输入通道数
+                out_channels=dim,             # 输出通道数
+                strides=(2, 2, 2),            # 步幅
+                kernel_size=(2, 2, 2),        # 卷积核大小
+                padding=0,            
+            ).cuda().half() 
+        self.max_avg_pool = MaxAvgPool(
+                spatial_dims=3,              # 3D 池化
+                kernel_size=(2, 2, 2),       # 池化核大小
+                stride=(2, 2, 2),            # 步幅
+                padding=0                    # 无填充
+            ).cuda().half()                  # 使用半精度浮点数
     def css_add_conv(self, x):
         x = torch.permute(x, (0, 4, 1, 2, 3))
-        add_conv = Convolution(
-                    spatial_dims=3,               # 3D 卷积
-                    in_channels=x.shape[1],       # 输入通道数
-                    out_channels=x.shape[1],      # 输出通道数
-                    strides=(2, 2, 2),            # 步幅
-                    kernel_size=(2, 2, 2),        # 卷积核大小
-                    padding=0,            
-                    # norm='LAYER',         # [BATCH, GROUP, LAYER, INSTANCE]
-                    # act='PRELU',           # 使用 PReLU 激活函数
-                ).cuda().half() 
-        output = torch.permute(add_conv(x), (0, 2, 3, 4, 1))
+        output = torch.permute(self.add_conv(x), (0, 2, 3, 4, 1))
         return output
     def css_max_avg_pool(self, x, merging):
         x = torch.permute(x, (0, 4, 1, 2, 3))  # 重新排列为 (batch, channels, depth, height, width)
         shape_c = x.shape[1]
-        max_avg_pool = MaxAvgPool(
-            spatial_dims=3,              # 3D 池化
-            kernel_size=(2, 2, 2),       # 池化核大小
-            stride=(2, 2, 2),            # 步幅
-            padding=0                    # 无填充
-        ).cuda().half()                  # 使用半精度浮点数
-
-        output = max_avg_pool(x)
+        output = self.max_avg_pool(x)
         if merging == "maxpool":
-            print("using maxpool")
+            # print("using maxpool")
             output = output[:, 0:shape_c, :, :, :]
         elif merging == "avgpool":
-            print("using avgpool")
+            # print("using avgpool")
             output = output[:, shape_c:, :, :, :]
         elif merging == "maxavgpool":
-            print("using max_avg_pool")
+            # print("using max_avg_pool")
             output = 0.5 * output[:, 0:shape_c, :, :, :] + 0.5 * output[:, shape_c:, :, :, :]
         else:
             raise ValueError("merging type must be maxpool or avgpool.")
@@ -822,7 +819,7 @@ class PatchMerging(PatchMergingV2):
         x7 = x[:, 1::2, 1::2, 1::2, :]
         if self.merging_type:
             if self.merging_type == "conv":
-                print("using convpool")
+                # print("using convpool")
                 x_add = self.css_add_conv(x)
                 x = torch.cat([x0+x_add, x1+x_add, x2+x_add, x3+x_add, x4+x_add, x5+x_add, x6+x_add, x7+x_add], -1)
             elif self.merging_type == "maxpool":
@@ -837,7 +834,7 @@ class PatchMerging(PatchMergingV2):
             else:
                 raise ValueError("merging_type must be one of 'conv', 'maxpool', 'avgpool'.")
         else: 
-            print("using default merging")
+            # print("using default merging")
             x = torch.cat([x0, x1, x2, x3, x4, x5, x6, x7], -1)
         x = self.norm(x)
         x = self.reduction(x)

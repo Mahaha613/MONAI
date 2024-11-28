@@ -1,0 +1,2 @@
+export CUDA_VISIBLE_DEVICES=2
+nohup python /home/xiang/user/user_group/caoshangshang/RushBin/MONAI/css/train.py --root_dir=css/experiment/swim_unetr/11.28_conv_merge_default_trans_500_eps --fig_save_path=css/train_conv.png --merging_type='conv' > css/train_11_28_conv_merge.log 2>&1 &

@@ -1,0 +1,2 @@
+export CUDA_VISIBLE_DEVICES=1
+nohup python /home/xiang/user/user_group/caoshangshang/RushBin/MONAI/css/train_max.py --root_dir=css/experiment/swim_unetr/11.27_max_merge_default_trans_500_eps --fig_save_path=css/train_max.png --merging_type='maxpool' > css/train_11_27_max_merge.log 2>&1 &

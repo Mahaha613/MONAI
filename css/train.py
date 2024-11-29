@@ -1,8 +1,8 @@
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = "2"
+os.environ['CUDA_VISIBLE_DEVICES'] = "1"
 import argparse
 from torch.utils.tensorboard import SummaryWriter
-os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
+os.environ['CUDA_LAUNCH_BLOCKING'] = "0"
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from glob import glob
@@ -11,7 +11,7 @@ from monai.inferers import sliding_window_inference
 
 from monai.config import print_config
 from monai.metrics import DiceMetric
-from monai.networks.nets import SwinUNETR
+# from monai.networks.nets import SwinUNETR
 import numpy as np
 
 from css.utils import generate_data_list
@@ -76,7 +76,7 @@ def train(train_loader, val_loader, args, writer):
                 if dice_val > dice_val_best:
                     dice_val_best = dice_val
                     global_step_best = epoch_idx
-                    torch.save(model.state_dict(), os.path.join(args.root_dir, f'epoch_{epoch_idx}.pth'))
+                    torch.save(model.state_dict(), os.path.join(args.exp_dir, f'epoch_{epoch_idx}_dice:{dice_val:.5f}.pth'))
                     print(
                         "Model Was Saved ! Current Best Avg. Dice: {} Current Avg. Dice: {}".format(dice_val_best, dice_val))
                 else:
@@ -158,13 +158,13 @@ def count_class_num(val_loader):
 def main():
     paser = argparse.ArgumentParser(description="Train Swin_unetr with BHSD dataset")
     # paser.add_argument('--device', default=0, required=True, help="choose a device for train, witch can be an int or list or 'cpu'")
-    paser.add_argument('--root_dir', default='css/experiment/swim_unetr/11.28', help="dir of saving files")
+    paser.add_argument('--exp_dir', default='css/experiment/swim_unetr/11.28', help="dir of saving files")
     paser.add_argument('--data_path', default='BSHD_src_data/preprocessed_image')
     paser.add_argument('--epoch', default=500)
     paser.add_argument('--eval_num', default=96)
     paser.add_argument('--model', choices=['swin_unetr'], default='swin_unetr')
     paser.add_argument('--seed', default=42)
-    paser.add_argument('--fig_save_path', default='css/train_pro.png')
+    paser.add_argument('--fig_save_path', default='train.png', help="name of saving fig")
     paser.add_argument('--lr', default=1e-3, help="start learning rate")
     paser.add_argument('--batch_size', default=1)
     paser.add_argument('--weight_decay', default=1e-4)
@@ -174,17 +174,20 @@ def main():
     paser.add_argument('--ref_window', default=(96, 96, 32))
     paser.add_argument('--merging_type', choices=['maxpool', 'avgpool', 'maxavgpool', 'conv'], default=None)
     paser.add_argument('--ref_weight', default=None, help='path of trained model')
+    paser.add_argument('--use_1x1_conv_for_skip', action='store_true', help='use 1x1 conv3d to change channel in skip connection')
+    paser.add_argument('--css_skip', action='store_true', help='using css skip connection')
     # paser.add_argument('--scehduler', action='store_true')
     args = paser.parse_args()
-    
-    log_dir = os.path.join(args.root_dir, "logs")
+
+    os.makedirs(args.exp_dir, exist_ok=True)
+    log_dir = os.path.join(args.exp_dir, "logs")
+    args.fig_save_path = os.path.join(args.exp_dir, args.fig_save_path)
     writer = SummaryWriter(log_dir=log_dir)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # device = torch.device("cuda:1")
     args.device = device
     name_list = ['BG', 'EDH', 'IPH', 'IVH', 'SAH', 'SDH']
     args.name_list = name_list
-    os.makedirs(args.root_dir, exist_ok=True)
     set_determinism(seed=args.seed)
     print(args)
     if args.test:

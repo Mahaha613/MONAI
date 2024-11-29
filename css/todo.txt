@@ -1,2 +1,2 @@
-my_transforms没有使用过正确的学习率训练
-可以增加epoch到500
+1、basline消融，确定一组参数[data, CropForegroundd, Spacingd, (RandCropByPosNegLabeld)]
+2、css_skip中要不要使用1x1卷积，要不要hidden_states_out[3] = self.css_add_skip(hidden_states_out[3])

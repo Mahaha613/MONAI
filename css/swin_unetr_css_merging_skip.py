@@ -77,6 +77,8 @@ class SwinUNETR(nn.Module):
         downsample="merging",
         use_v2=False,
         merging_type=None,
+        css_skip=None,
+        use_1x1_conv_for_skip=None,
     ) -> None:
         """
         Args:
@@ -119,7 +121,54 @@ class SwinUNETR(nn.Module):
         img_size = ensure_tuple_rep(img_size, spatial_dims)
         patch_sizes = ensure_tuple_rep(self.patch_size, spatial_dims)
         window_size = ensure_tuple_rep(7, spatial_dims)
+        # *******************************************************************
         self.merging_type = merging_type
+        self.css_skip = css_skip
+        self.use_1x1_conv_for_skip = use_1x1_conv_for_skip
+        if self.css_skip:
+            self.max_pool = MaxAvgPool(
+                spatial_dims=3,
+                stride=(2,2,2),
+                kernel_size=(2,2,2),
+                padding=0,
+                )
+        if self.use_1x1_conv_for_skip:
+            self.conv_1x1x1_enc4 = Convolution(
+                spatial_dims=3,
+                in_channels=4*feature_size,
+                out_channels=8*feature_size,
+                kernel_size=1,
+                strides=1,
+                padding=0
+                )
+            
+            self.conv_1x1x1_enc3 = Convolution(
+                spatial_dims=3,
+                in_channels=2*feature_size,
+                out_channels=4*feature_size,
+                kernel_size=1,
+                strides=1,
+                padding=0
+                )
+            
+            self.conv_1x1x1_enc2 = Convolution(
+                spatial_dims=3,
+                in_channels=feature_size,
+                out_channels=2*feature_size,
+                kernel_size=1,
+                strides=1,
+                padding=0
+                )
+
+            self.conv_1x1x1_enc1 = Convolution(
+                spatial_dims=3,
+                in_channels=feature_size,
+                out_channels=feature_size,
+                kernel_size=1,
+                strides=1,
+                padding=0
+                )
+# *******************************************************************
 
         if spatial_dims not in (2, 3):
             raise ValueError("spatial dimension should be 2 or 3.")
@@ -321,6 +370,16 @@ class SwinUNETR(nn.Module):
                 f" must be divisible by {self.patch_size}**5."
             )
 
+    def css_add_skip(self, x_in):
+        x = torch.permute(x_in, (0, 4, 1, 2, 3))
+        x_shape_c = x.shape[1]
+        output = self.max_pool(x)[:, 0:x_shape_c, :, :, :]
+        # if self.use_1x1_conv_for_skip:
+        #     output = self.conv_1x1(output)
+        # output = torch.cat([output, output], dim=1)
+        output = torch.permute(output, (0, 2, 3, 4, 1))
+        return output
+
     def forward(self, x_in):
         if not torch.jit.is_scripting() and not torch.jit.is_tracing():
             self._check_input_size(x_in.shape[2:])
@@ -329,6 +388,33 @@ class SwinUNETR(nn.Module):
         enc1 = self.encoder2(hidden_states_out[0])
         enc2 = self.encoder3(hidden_states_out[1])
         enc3 = self.encoder4(hidden_states_out[2])
+        
+        if self.css_skip:
+            m3 = self.css_add_skip(enc3)
+            if self.use_1x1_conv_for_skip:
+                m3 = self.conv_1x1x1_enc3(m3)
+                enc3 = m3 + enc3
+            else:
+                m3 = torch.cat([m3, m3], dim=-1)
+                enc3 = m3 + enc3
+
+            m2 = self.css_add_skip(enc2)
+            if self.use_1x1_conv_for_skip:
+                m3 = self.conv_1x1x1_enc2(m2)
+                enc2 = m2 + enc2
+            else:
+                m2 = torch.cat([m2, m2], dim=-1)
+                enc2 = m2 + enc2
+
+            enc1 = self.css_add_skip(enc1)
+            if self.use_1x1_conv_for_skip:
+                m1 = self.conv_1x1x1_enc1(m1)
+                enc1 = m1 + enc1
+            else:
+                m1 = torch.cat([m1, m1], dim=-1)
+                enc1 = m1 + enc1
+            # hidden_states_out[3] = self.css_add_skip(hidden_states_out[3])
+
         dec4 = self.encoder10(hidden_states_out[4])
         dec3 = self.decoder5(dec4, hidden_states_out[3])
         dec2 = self.decoder4(dec3, enc3)

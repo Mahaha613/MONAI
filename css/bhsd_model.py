@@ -1,5 +1,7 @@
 # from monai.networks.nets import SwinUNETR
-from css.swin_unetr_css_merging import SwinUNETR
+# from css.swin_unetr_css_merging import SwinUNETR
+from css.swin_unetr_css_merging_skip import SwinUNETR
+
 import torch
 import os
 import json
@@ -13,7 +15,9 @@ def css_model(args):
             feature_size=48,
             use_checkpoint=True,
             # use_v2=True,
-            merging_type=args.merging_type
+            merging_type=args.merging_type,
+            css_skip=args.css_skip,
+            use_1x1_conv_for_skip=args.use_1x1_conv_for_skip,
         ).to(args.device)
         if args.test:
             assert os.path.isfile(args.ref_weight), "weight path is not a file"

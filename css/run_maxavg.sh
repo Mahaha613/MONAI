@@ -1,2 +1,0 @@
-export CUDA_VISIBLE_DEVICES=2
-nohup python /home/xiang/user/user_group/caoshangshang/RushBin/MONAI/css/train_maxavg.py --root_dir=css/experiment/swim_unetr/11.27_maxavg_merge_default_trans_500_eps --fig_save_path=css/train_maxavg.png --merging_type='maxavgpool' > css/train_11_27_maxavg_merge.log 2>&1 &

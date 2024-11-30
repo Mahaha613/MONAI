@@ -167,6 +167,7 @@ BSHD_src_data/
 
 *.pt
 
+
 /home/xiang/user/user_group/caoshangshang/RushBin/MONAI/css/model_swinvit.pt
 
 /home/xiang/user/user_group/caoshangshang/RushBin/MONAI/css/experiment/swin_unetr/*

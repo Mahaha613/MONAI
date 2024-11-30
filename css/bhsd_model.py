@@ -18,6 +18,8 @@ def css_model(args):
             merging_type=args.merging_type,
             css_skip=args.css_skip,
             use_1x1_conv_for_skip=args.use_1x1_conv_for_skip,
+            use_css_skip_m4 = args.use_css_skip_m4,
+            use_css_skip_m1V2 = args.use_css_skip_m1V2
         ).to(args.device)
         if args.test:
             assert os.path.isfile(args.ref_weight), "weight path is not a file"

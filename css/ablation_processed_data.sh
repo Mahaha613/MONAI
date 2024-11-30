@@ -1,4 +1,4 @@
-export CUDA_VISIBLE_DEVICES=1
+export CUDA_VISIBLE_DEVICES=2
 
 # Ablation norm&clip:source_data
 # nohup python /home/xiang/user/user_group/caoshangshang/RushBin/MONAI/css/train.py \

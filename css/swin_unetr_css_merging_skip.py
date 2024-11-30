@@ -79,6 +79,8 @@ class SwinUNETR(nn.Module):
         merging_type=None,
         css_skip=None,
         use_1x1_conv_for_skip=None,
+        use_css_skip_m4 = None,
+        use_css_skip_m1V2 = None,
     ) -> None:
         """
         Args:
@@ -125,6 +127,8 @@ class SwinUNETR(nn.Module):
         self.merging_type = merging_type
         self.css_skip = css_skip
         self.use_1x1_conv_for_skip = use_1x1_conv_for_skip
+        self.use_css_skip_m4 = use_css_skip_m4
+        self.use_css_skip_m1V2 = use_css_skip_m1V2
         if self.css_skip:
             self.max_pool = MaxAvgPool(
                 spatial_dims=3,
@@ -133,7 +137,7 @@ class SwinUNETR(nn.Module):
                 padding=0,
                 )
         if self.use_1x1_conv_for_skip:
-            self.conv_1x1x1_enc4 = Convolution(
+            self.conv_1x1x1_m4 = Convolution(
                 spatial_dims=3,
                 in_channels=4*feature_size,
                 out_channels=8*feature_size,
@@ -142,7 +146,7 @@ class SwinUNETR(nn.Module):
                 padding=0
                 )
             
-            self.conv_1x1x1_enc3 = Convolution(
+            self.conv_1x1x1_m3 = Convolution(
                 spatial_dims=3,
                 in_channels=2*feature_size,
                 out_channels=4*feature_size,
@@ -151,7 +155,7 @@ class SwinUNETR(nn.Module):
                 padding=0
                 )
             
-            self.conv_1x1x1_enc2 = Convolution(
+            self.conv_1x1x1_m2 = Convolution(
                 spatial_dims=3,
                 in_channels=feature_size,
                 out_channels=2*feature_size,
@@ -160,7 +164,7 @@ class SwinUNETR(nn.Module):
                 padding=0
                 )
 
-            self.conv_1x1x1_enc1 = Convolution(
+            self.conv_1x1x1_m1 = Convolution(
                 spatial_dims=3,
                 in_channels=feature_size,
                 out_channels=feature_size,
@@ -371,49 +375,51 @@ class SwinUNETR(nn.Module):
             )
 
     def css_add_skip(self, x_in):
-        x = torch.permute(x_in, (0, 4, 1, 2, 3))
-        x_shape_c = x.shape[1]
-        output = self.max_pool(x)[:, 0:x_shape_c, :, :, :]
-        # if self.use_1x1_conv_for_skip:
-        #     output = self.conv_1x1(output)
-        # output = torch.cat([output, output], dim=1)
-        output = torch.permute(output, (0, 2, 3, 4, 1))
-        return output
+        x_shape_c = x_in.shape[1]
+        maxpool_output = self.max_pool(x_in)[:, 0:x_shape_c, :, :, :]  # 返回torch.cat(maxpool, avgpool, 1)
+        return maxpool_output
 
-    def forward(self, x_in):
+    def forward(self, x_in):  
         if not torch.jit.is_scripting() and not torch.jit.is_tracing():
-            self._check_input_size(x_in.shape[2:])
+            self._check_input_size(x_in.shape[2:])  # x_in.shape:(4,1,96,96,96,32)
         hidden_states_out = self.swinViT(x_in, self.normalize)
-        enc0 = self.encoder1(x_in)
-        enc1 = self.encoder2(hidden_states_out[0])
-        enc2 = self.encoder3(hidden_states_out[1])
-        enc3 = self.encoder4(hidden_states_out[2])
+        enc0 = self.encoder1(x_in)                  # enc0:torch.Size([4, 48, 96, 96, 32])  
+        enc1 = self.encoder2(hidden_states_out[0])  # enc1:torch.Size([4, 48, 48, 48, 16]) same as hidden_states_out[0]
+        enc2 = self.encoder3(hidden_states_out[1])  # enc2:torch.Size([4, 96, 24, 24, 8]) same as hidden_states_out[1]
+        enc3 = self.encoder4(hidden_states_out[2])  # enc3:torch.Size([4, 192, 12, 12, 4]) same as hidden_states_out[2]
         
         if self.css_skip:
-            m3 = self.css_add_skip(enc3)
+            if self.use_css_skip_m4:
+                m4 = self.css_add_skip(enc3)
+                if self.use_1x1_conv_for_skip:
+                    m4 = self.conv_1x1x1_m4(m4)
+                    hidden_states_out[3] = m4 + hidden_states_out[3]
+                else:
+                    m4 = torch.cat([m4, m4], dim=1)
+                    hidden_states_out[3] = m4 + hidden_states_out[3]
+
+            m3 = self.css_add_skip(enc2)  # m3:torch.Size([4, 96, 12, 12, 4])
             if self.use_1x1_conv_for_skip:
-                m3 = self.conv_1x1x1_enc3(m3)
+                m3 = self.conv_1x1x1_m3(m3)
                 enc3 = m3 + enc3
             else:
-                m3 = torch.cat([m3, m3], dim=-1)
+                m3 = torch.cat([m3, m3], dim=1)
                 enc3 = m3 + enc3
 
-            m2 = self.css_add_skip(enc2)
+            m2 = self.css_add_skip(enc1)
             if self.use_1x1_conv_for_skip:
-                m3 = self.conv_1x1x1_enc2(m2)
+                m2 = self.conv_1x1x1_m2(m2)
                 enc2 = m2 + enc2
             else:
-                m2 = torch.cat([m2, m2], dim=-1)
+                m2 = torch.cat([m2, m2], dim=1)
                 enc2 = m2 + enc2
 
-            enc1 = self.css_add_skip(enc1)
-            if self.use_1x1_conv_for_skip:
-                m1 = self.conv_1x1x1_enc1(m1)
+            m1 = self.css_add_skip(enc0)  # no need to double the channels
+            if self.use_css_skip_m1V2:
+                m1 = self.conv_1x1x1_m1(m1)
                 enc1 = m1 + enc1
             else:
-                m1 = torch.cat([m1, m1], dim=-1)
                 enc1 = m1 + enc1
-            # hidden_states_out[3] = self.css_add_skip(hidden_states_out[3])
 
         dec4 = self.encoder10(hidden_states_out[4])
         dec3 = self.decoder5(dec4, hidden_states_out[3])
@@ -886,7 +892,7 @@ class PatchMerging(PatchMergingV2):
         return output
         
     def forward(self, x):
-        x_shape = x.size()
+        x_shape = x.size()  # torch.Size([4, 48, 48, 16, 48])
         if len(x_shape) == 4:
             return super().forward(x)
         if len(x_shape) != 5:

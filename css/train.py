@@ -1,5 +1,5 @@
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = "1"
+os.environ['CUDA_VISIBLE_DEVICES'] = "2"
 import argparse
 from torch.utils.tensorboard import SummaryWriter
 os.environ['CUDA_LAUNCH_BLOCKING'] = "0"
@@ -176,6 +176,8 @@ def main():
     paser.add_argument('--ref_weight', default=None, help='path of trained model')
     paser.add_argument('--use_1x1_conv_for_skip', action='store_true', help='use 1x1 conv3d to change channel in skip connection')
     paser.add_argument('--css_skip', action='store_true', help='using css skip connection')
+    paser.add_argument('--use_css_skip_m4', action='store_true', help='using css skip connection m4')
+    paser.add_argument('--use_css_skip_m1V2', action='store_true', help='using css skip connection m1v2')
     # paser.add_argument('--scehduler', action='store_true')
     args = paser.parse_args()
 

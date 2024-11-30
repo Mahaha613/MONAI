@@ -1,2 +1,5 @@
 1、basline消融，确定一组参数[data, CropForegroundd, Spacingd, (RandCropByPosNegLabeld)]
 2、css_skip中要不要使用1x1卷积，要不要hidden_states_out[3] = self.css_add_skip(hidden_states_out[3])
+3、指标的除数可能有问题
+4、直接在hidden_states_out0-4上自加一个最大池化再送入encoder
+5、m1要不要加1x1x1conv3d

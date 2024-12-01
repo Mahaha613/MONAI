@@ -38,15 +38,15 @@ def get_transforms(trans, device, is_train=True):
             ## 截断
             ## Lambdad(keys=["image"], func=lambda x: np.clip(x, a_min=-4000, a_max=4000)),
 
-            # ClipIntensityPercentilesd(keys=["image"], lower=5, upper=95, sharpness_factor=10),
-            # ScaleIntensityRanged(
-            #     keys=["image"],
-            #     a_min=-4000,
-            #     a_max=4000,
-            #     b_min=0.0,
-            #     b_max=1.0,
-            #     clip=True,
-            # ),
+            ClipIntensityPercentilesd(keys=["image"], lower=5, upper=95, sharpness_factor=10),
+            ScaleIntensityRanged(
+                keys=["image"],
+                a_min=-4000,
+                a_max=4000,
+                b_min=0.0,
+                b_max=1.0,
+                clip=True,
+            ),
             CropForegroundd(keys=["image", "label"], source_key="image", margin=5),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
             Spacingd(
@@ -96,8 +96,8 @@ def get_transforms(trans, device, is_train=True):
     my_val_trs = Compose(
         [
             LoadImaged(keys=["image", "label"], ensure_channel_first=True),
-            # ClipIntensityPercentilesd(keys=["image"], lower=5, upper=95, sharpness_factor=10),
-            # ScaleIntensityRanged(keys=["image"], a_min=-4500, a_max=4500, b_min=0, b_max=1.0, clip=True),
+            ClipIntensityPercentilesd(keys=["image"], lower=5, upper=95, sharpness_factor=10),
+            ScaleIntensityRanged(keys=["image"], a_min=-4500, a_max=4500, b_min=0, b_max=1.0, clip=True),
             CropForegroundd(keys=["image", "label"], source_key="image", margin=5),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
             Spacingd(

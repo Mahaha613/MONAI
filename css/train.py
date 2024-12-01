@@ -72,16 +72,16 @@ def train(train_loader, val_loader, args, writer):
 
                 epoch_loss /= step
                 epoch_loss_values.append(epoch_loss)
-                metric_values.append(dice_val)
-                if dice_val > dice_val_best:
-                    dice_val_best = dice_val
+                metric_values.append(mean_dice_val_without_bg)
+                if mean_dice_val_without_bg > dice_val_best:
+                    dice_val_best = mean_dice_val_without_bg
                     global_step_best = epoch_idx
-                    torch.save(model.state_dict(), os.path.join(args.exp_dir, f'epoch_{epoch_idx}_dice:{dice_val:.5f}.pth'))
+                    torch.save(model.state_dict(), os.path.join(args.exp_dir, f'epoch_{epoch_idx}_dice:{mean_dice_val_without_bg:.5f}.pth'))
                     print(
-                        "Model Was Saved ! Current Best Avg. Dice: {} Current Avg. Dice: {}".format(dice_val_best, dice_val))
+                        "Model Was Saved ! Current Best Avg. Dice: {} Current Avg. Dice: {}".format(dice_val_best, mean_dice_val_without_bg))
                 else:
                     print(
-                        "Model Was Not Saved ! Current Best Avg. Dice: {} Current Avg. Dice: {}".format(dice_val_best, dice_val))
+                        "Model Was Not Saved ! Current Best Avg. Dice: {} Current Avg. Dice: {}".format(dice_val_best, mean_dice_val_without_bg))
         scheduler.step()
         writer.add_scalar('Train/LR', scheduler.get_last_lr()[0], epoch_idx)
 

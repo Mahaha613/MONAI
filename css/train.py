@@ -165,7 +165,7 @@ def main():
     paser.add_argument('--model', choices=['swin_unetr'], default='swin_unetr')
     paser.add_argument('--seed', default=42)
     paser.add_argument('--fig_save_path', default='train.png', help="name of saving fig")
-    paser.add_argument('--lr', default=1e-3, help="start learning rate")
+    paser.add_argument('--lr', default=1e-3, type=float, help="start learning rate")
     paser.add_argument('--batch_size', default=1)
     paser.add_argument('--weight_decay', default=1e-4)
     paser.add_argument('--num_workers', default=0)  # 大于0会与os.environ['CUDA_LAUNCH_BLOCKING'] = "1"冲突
@@ -202,6 +202,7 @@ def main():
     
     set_track_meta(False)
     if not args.test:
+        
         dice_val_best, global_step_best, epoch_loss_values, metric_values = train(train_loader, val_loader, args, writer=writer)
         print(f"train completed, best_metric: {dice_val_best:.4f} " f"at iteration: {global_step_best}")
         draw_fig(epoch_loss_values, metric_values, args)

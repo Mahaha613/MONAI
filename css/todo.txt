@@ -3,3 +3,4 @@
 3、指标的除数可能有问题
 4、直接在hidden_states_out0-4上自加一个最大池化再送入encoder
 5、m1要不要加1x1x1conv3d
+6、训练初期前景分割Dice为0是否与lr有关？ lr=0.1时50eps Dice仍为0.0， lr=0.001时10eps Dice已经大于0.0

@@ -6,4 +6,4 @@ nohup python /home/xiang/user/user_group/caoshangshang/RushBin/MONAI/css/train.p
 --data_path=BSHD_src_data/image \
 --test \
 --transforms=my_tr_trs \
---ref_weigh=/home/xiang/user/user_group/caoshangshang/RushBin/MONAI/css/experiment/swim_unetr/11_29_Ab_norm_clip/epoch_433.pth > css/test_$(date +%m_%d)_Ab_norm_clip.log 2>&1 &
+--ref_weigh=css/experiment/swim_unetr/11_29_Ab_norm_clip/epoch_433.pth > css/test_$(date +%m_%d)_Ab_norm_clip.log 2>&1 &

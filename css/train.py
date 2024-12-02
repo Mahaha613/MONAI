@@ -1,5 +1,5 @@
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = "2"
+import ast
 import argparse
 from torch.utils.tensorboard import SummaryWriter
 os.environ['CUDA_LAUNCH_BLOCKING'] = "0"
@@ -164,13 +164,14 @@ def main():
     paser.add_argument('--eval_num', default=96)
     paser.add_argument('--model', choices=['swin_unetr'], default='swin_unetr')
     paser.add_argument('--seed', default=42)
-    paser.add_argument('--fig_save_path', default='train.png', help="name of saving fig")
+    paser.add_argument('--fig_save_path', default='css/train.png', help="name of saving fig")
     paser.add_argument('--lr', default=1e-3, type=float, help="start learning rate")
     paser.add_argument('--batch_size', default=1)
     paser.add_argument('--weight_decay', default=1e-4)
     paser.add_argument('--num_workers', default=0)  # 大于0会与os.environ['CUDA_LAUNCH_BLOCKING'] = "1"冲突
     paser.add_argument('--test', action='store_true')
-    paser.add_argument('--transforms', choices=['my_tr_trs', 'source_tr_trs'], default='source_tr_trs')
+    paser.add_argument('--transforms', choices=['my_tr_trs', 'source_tr_trs', 'css_tr_trs'], default='source_tr_trs')
+    paser.add_argument('--spacing', default=(1.5, 1.5, 2.0), type=ast.literal_eval, help="spacing for transforms")
     paser.add_argument('--ref_window', default=(96, 96, 32))
     paser.add_argument('--merging_type', choices=['maxpool', 'avgpool', 'maxavgpool', 'conv'], default=None)
     paser.add_argument('--ref_weight', default=None, help='path of trained model')
@@ -178,9 +179,10 @@ def main():
     paser.add_argument('--css_skip', action='store_true', help='using css skip connection')
     paser.add_argument('--use_css_skip_m4', action='store_true', help='using css skip connection m4')
     paser.add_argument('--use_css_skip_m1V2', action='store_true', help='using css skip connection m1v2')
+    paser.add_argument('--device', default=2, help='using gpu device for train')
     # paser.add_argument('--scehduler', action='store_true')
     args = paser.parse_args()
-
+    os.environ['CUDA_VISIBLE_DEVICES'] = args.device
     os.makedirs(args.exp_dir, exist_ok=True)
     log_dir = os.path.join(args.exp_dir, "logs")
     args.fig_save_path = os.path.join(args.exp_dir, args.fig_save_path)

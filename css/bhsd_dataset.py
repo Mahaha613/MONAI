@@ -31,7 +31,7 @@ import matplotlib.pyplot as plt
 set_determinism(seed=42)
 
 # ******************************************generate data*****************************************************
-def get_transforms(trans, device, is_train=True):
+def get_transforms(trans, device, spacing, is_train=True):
     my_tr_trs = Compose(       
         [
             LoadImaged(keys=["image", "label"], ensure_channel_first=True),  # (h, w, d)
@@ -51,7 +51,7 @@ def get_transforms(trans, device, is_train=True):
             Orientationd(keys=["image", "label"], axcodes="RAS"),
             Spacingd(
                 keys=["image", "label"],
-                pixdim=(1.5, 1.5, 2.0),  # (h, w, d)
+                pixdim=spacing,  # (h, w, d)
                 mode=("bilinear", "nearest"),
             ),
             EnsureTyped(keys=["image", "label"], device=device, track_meta=False),
@@ -102,7 +102,7 @@ def get_transforms(trans, device, is_train=True):
             Orientationd(keys=["image", "label"], axcodes="RAS"),
             Spacingd(
                 keys=["image", "label"],
-                pixdim=(1.5, 1.5, 2.0),
+                pixdim=spacing,
                 mode=("bilinear", "nearest"),
             ),
             EnsureTyped(keys=["image", "label"], device=device, track_meta=True),
@@ -112,11 +112,11 @@ def get_transforms(trans, device, is_train=True):
     source_tr_trs = Compose(       
         [
             LoadImaged(keys=["image", "label"], ensure_channel_first=True),
-            # CropForegroundd(keys=["image", "label"], source_key="image"),  # 消融，功能与RandCropByPosNegLabeld类似
+            CropForegroundd(keys=["image", "label"], source_key="image"),  # 消融，功能与RandCropByPosNegLabeld类似
             Orientationd(keys=["image", "label"], axcodes="RAS"),
             Spacingd(
                 keys=["image", "label"],
-                pixdim=(1.0, 1.0, 2.0),
+                pixdim=spacing,
                 mode=("bilinear", "nearest"),
             ),
             EnsureTyped(keys=["image", "label"], device=device, track_meta=False),
@@ -161,11 +161,74 @@ def get_transforms(trans, device, is_train=True):
     source_val_trs = Compose(
         [
             LoadImaged(keys=["image", "label"], ensure_channel_first=True),
+            CropForegroundd(keys=["image", "label"], source_key="image"),
+            Orientationd(keys=["image", "label"], axcodes="RAS"),
+            Spacingd(
+                keys=["image", "label"],
+                pixdim=spacing,
+                mode=("bilinear", "nearest"),
+            ),
+            EnsureTyped(keys=["image", "label"], device=device, track_meta=True),
+        ], 
+    )
+
+    css_tr_trs = Compose(       
+        [
+            LoadImaged(keys=["image", "label"], ensure_channel_first=True),
+            # CropForegroundd(keys=["image", "label"], source_key="image"),  # 消融，功能与RandCropByPosNegLabeld类似
+            Orientationd(keys=["image", "label"], axcodes="RAS"),
+            Spacingd(
+                keys=["image", "label"],
+                pixdim=spacing,
+                mode=("bilinear", "nearest"),
+            ),
+            EnsureTyped(keys=["image", "label"], device=device, track_meta=False),
+            RandCropByPosNegLabeld(
+                keys=["image", "label"],
+                label_key="label",
+                spatial_size=(96, 96, 32),  # (C,H,W,[D])
+                pos=2,
+                neg=1,
+                num_samples=4,
+                image_key="image",
+                image_threshold=0,
+            ),
+            RandFlipd(
+                keys=["image", "label"],
+                spatial_axis=[0],
+                prob=0.10,
+            ),
+            RandFlipd(
+                keys=["image", "label"],
+                spatial_axis=[1],
+                prob=0.10,
+            ),
+            RandFlipd(
+                keys=["image", "label"],
+                spatial_axis=[2],
+                prob=0.10,
+            ),
+            RandRotate90d(
+                keys=["image", "label"],
+                prob=0.10,
+                max_k=3,
+            ),
+            RandShiftIntensityd(
+                keys=["image"],
+                offsets=0.10,
+                prob=0.50,
+            ),
+        ]
+    )
+
+    css_val_trs = Compose(
+        [
+            LoadImaged(keys=["image", "label"], ensure_channel_first=True),
             # CropForegroundd(keys=["image", "label"], source_key="image"),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
             Spacingd(
                 keys=["image", "label"],
-                pixdim=(1.0, 1.0, 2.0),
+                pixdim=spacing,
                 mode=("bilinear", "nearest"),
             ),
             EnsureTyped(keys=["image", "label"], device=device, track_meta=True),
@@ -175,11 +238,15 @@ def get_transforms(trans, device, is_train=True):
     if is_train:
         if 'source' in trans:
             return source_tr_trs
+        elif 'css' in trans:
+            return css_tr_trs
         else:
             return my_tr_trs
     else:
         if 'source' in trans:
             return source_val_trs
+        elif 'css' in trans:
+            return css_val_trs
         else:
             return my_val_trs
 
@@ -190,7 +257,7 @@ def generate_data(args):
                                 'BSHD_src_data/label/test')
         val_ds = CacheDataset(
         data=val_files, 
-        transform=get_transforms(args.transforms, args.device, is_train=False), 
+        transform=get_transforms(args.transforms, args.device, spacing=args.spacing, is_train=False), 
         # cache_num=24, 
         cache_rate=1.0, 
         num_workers=args.num_workers)
@@ -210,7 +277,7 @@ def generate_data(args):
 
     train_ds = CacheDataset(
         data=datalist,
-        transform=get_transforms(args.transforms, args.device),
+        transform=get_transforms(args.transforms, args.device, spacing=args.spacing),
         # cache_num=24,
         cache_rate=1.0,
         num_workers=args.num_workers)
@@ -222,7 +289,7 @@ def generate_data(args):
 
     val_ds = CacheDataset(
         data=val_files, 
-        transform=get_transforms(args.transforms, args.device, is_train=False), 
+        transform=get_transforms(args.transforms, args.device, spacing=args.spacing, is_train=False), 
         # cache_num=24, 
         cache_rate=1.0, 
         num_workers=args.num_workers)

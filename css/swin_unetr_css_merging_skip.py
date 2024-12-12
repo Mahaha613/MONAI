@@ -860,7 +860,8 @@ class PatchMerging(PatchMergingV2):
                 out_channels=dim,             # 输出通道数
                 strides=(2, 2, 2),            # 步幅
                 kernel_size=(2, 2, 2),        # 卷积核大小
-                padding=0,            
+                padding=0,   
+                # dropout=0.2      
             ) 
         self.max_avg_pool = MaxAvgPool(
                 spatial_dims=3,              # 3D 池化
@@ -901,13 +902,21 @@ class PatchMerging(PatchMergingV2):
         pad_input = (h % 2 == 1) or (w % 2 == 1) or (d % 2 == 1)
         if pad_input:
             x = F.pad(x, (0, 0, 0, w % 2, 0, h % 2, 0, d % 2))
+        # x0 = x[:, 0::2, 0::2, 0::2, :]
+        # x1 = x[:, 1::2, 0::2, 0::2, :]
+        # x2 = x[:, 0::2, 1::2, 0::2, :]
+        # x3 = x[:, 0::2, 0::2, 1::2, :]
+        # x4 = x[:, 1::2, 0::2, 1::2, :]
+        # x5 = x[:, 0::2, 1::2, 0::2, :]
+        # x6 = x[:, 0::2, 0::2, 1::2, :]
+        # x7 = x[:, 1::2, 1::2, 1::2, :]
         x0 = x[:, 0::2, 0::2, 0::2, :]
         x1 = x[:, 1::2, 0::2, 0::2, :]
         x2 = x[:, 0::2, 1::2, 0::2, :]
-        x3 = x[:, 0::2, 0::2, 1::2, :]
-        x4 = x[:, 1::2, 0::2, 1::2, :]
-        x5 = x[:, 0::2, 1::2, 0::2, :]
-        x6 = x[:, 0::2, 0::2, 1::2, :]
+        x3 = x[:, 1::2, 1::2, 0::2, :]
+        x4 = x[:, 0::2, 0::2, 1::2, :]
+        x5 = x[:, 1::2, 0::2, 1::2, :]
+        x6 = x[:, 0::2, 1::2, 1::2, :]
         x7 = x[:, 1::2, 1::2, 1::2, :]
         if self.merging_type:
             if self.merging_type == "conv":
@@ -929,7 +938,7 @@ class PatchMerging(PatchMergingV2):
             # print("using default merging")
             x = torch.cat([x0, x1, x2, x3, x4, x5, x6, x7], -1)
         x = self.norm(x)
-        x = self.reduction(x)
+        x = self.reduction(x)  # self.reduction = nn.Linear(8 * dim, 2 * dim, bias=False)
         return x
 
 

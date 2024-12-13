@@ -31,7 +31,7 @@ import matplotlib.pyplot as plt
 set_determinism(seed=42)
 
 # ******************************************generate data*****************************************************
-def get_transforms(trans, device, spacing, is_train=True):
+def get_transforms(trans, device, spacing, spatial_size, is_train=True):
     my_tr_trs = Compose(       
         [
             LoadImaged(keys=["image", "label"], ensure_channel_first=True),  # (h, w, d)
@@ -58,7 +58,7 @@ def get_transforms(trans, device, spacing, is_train=True):
             RandCropByPosNegLabeld(
                 keys=["image", "label"],
                 label_key="label",
-                spatial_size=(96, 96, 32),  # (H,W,D)
+                spatial_size=spatial_size,  # (H,W,D)
                 pos=2,
                 neg=1,
                 num_samples=4,
@@ -123,7 +123,7 @@ def get_transforms(trans, device, spacing, is_train=True):
             RandCropByPosNegLabeld(
                 keys=["image", "label"],
                 label_key="label",
-                spatial_size=(96, 96, 32),  # (C,H,W,[D])
+                spatial_size=spatial_size,  # (C,H,W,[D])
                 pos=2,
                 neg=1,
                 num_samples=4,
@@ -186,7 +186,7 @@ def get_transforms(trans, device, spacing, is_train=True):
             RandCropByPosNegLabeld(
                 keys=["image", "label"],
                 label_key="label",
-                spatial_size=(96, 96, 32),  # (C,H,W,[D])
+                spatial_size=spatial_size,  # (C,H,W,[D])
                 pos=2,
                 neg=1,
                 num_samples=4,
@@ -257,7 +257,7 @@ def generate_data(args):
                                 'BSHD_src_data/label/test')
         val_ds = CacheDataset(
         data=val_files, 
-        transform=get_transforms(args.transforms, args.device, spacing=args.spacing, is_train=False), 
+        transform=get_transforms(args.transforms, args.device, spacing=args.spacing, spatial_size=args.ref_window, is_train=False), 
         # cache_num=24, 
         cache_rate=1.0, 
         num_workers=args.num_workers)
@@ -277,7 +277,7 @@ def generate_data(args):
 
     train_ds = CacheDataset(
         data=datalist,
-        transform=get_transforms(args.transforms, args.device, spacing=args.spacing),
+        transform=get_transforms(args.transforms, args.device, spacing=args.spacing, spatial_size=args.ref_window),
         # cache_num=24,
         cache_rate=1.0,
         num_workers=args.num_workers)
@@ -289,7 +289,7 @@ def generate_data(args):
 
     val_ds = CacheDataset(
         data=val_files, 
-        transform=get_transforms(args.transforms, args.device, spacing=args.spacing, is_train=False), 
+        transform=get_transforms(args.transforms, args.device, spacing=args.spacing, spatial_size=args.ref_window, is_train=False), 
         # cache_num=24, 
         cache_rate=1.0, 
         num_workers=args.num_workers)

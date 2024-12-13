@@ -34,9 +34,10 @@ def train(train_loader, val_loader, args, writer):
     model = css_model(args)
     loss_function = DiceCELoss(to_onehot_y=True, softmax=True)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epoch, eta_min=1e-6)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epoch, eta_min=args.eta_min)
     scaler = torch.cuda.amp.GradScaler()
     dice_val_best = 0.0
+    cls_dice_val_best = 0.0
     global_step_best = 0
     epoch_loss_values = []
     metric_values = []
@@ -75,13 +76,14 @@ def train(train_loader, val_loader, args, writer):
                 metric_values.append(mean_dice_val_without_bg)
                 if mean_dice_val_without_bg > dice_val_best:
                     dice_val_best = mean_dice_val_without_bg
+                    cls_dice_val_best = class_dice_vals
                     global_step_best = epoch_idx
                     torch.save(model.state_dict(), os.path.join(args.exp_dir, f'epoch_{epoch_idx}_dice:{mean_dice_val_without_bg:.5f}.pth'))
                     print(
-                        "Model Was Saved ! Current Best Avg. Dice: {} Current Avg. Dice: {}".format(dice_val_best, mean_dice_val_without_bg))
+                        "Model Was Saved ! Current Best Avg. Dice: {} Current Best cls. Dice: {} Current Avg. Dice: {} cls. Dice: {}".format(dice_val_best, cls_dice_val_best, mean_dice_val_without_bg, class_dice_vals))
                 else:
                     print(
-                        "Model Was Not Saved ! Current Best Avg. Dice: {} Current Avg. Dice: {}".format(dice_val_best, mean_dice_val_without_bg))
+                        "Model Was Not Saved ! Current Best Avg. Dice: {} Current Best cls. Dice: {} Current Avg. Dice: {} cls. Dice: {}".format(dice_val_best, cls_dice_val_best, mean_dice_val_without_bg, class_dice_vals))
         scheduler.step()
         writer.add_scalar('Train/LR', scheduler.get_last_lr()[0], epoch_idx)
 
@@ -157,42 +159,41 @@ def count_class_num(val_loader):
         
 def main():
     paser = argparse.ArgumentParser(description="Train Swin_unetr with BHSD dataset")
-    # paser.add_argument('--device', default=0, required=True, help="choose a device for train, witch can be an int or list or 'cpu'")
     paser.add_argument('--exp_dir', default='css/experiment/swim_unetr/11.28', help="dir of saving files")
     paser.add_argument('--data_path', default='BSHD_src_data/preprocessed_image')
     paser.add_argument('--epoch', default=500)
     paser.add_argument('--eval_num', default=96)
-    paser.add_argument('--model', choices=['swin_unetr'], default='swin_unetr')
+    paser.add_argument('--model', type=str, choices=['swin_unetr', 'swin_unetr_css_merging'], default="swin_unetr")
     paser.add_argument('--seed', default=42)
-    paser.add_argument('--fig_save_path', default='css/train.png', help="name of saving fig")
-    paser.add_argument('--lr', default=1e-3, type=float, help="start learning rate")
+    paser.add_argument('--fig_save_name', default='css/train.png', help="name of saving fig")
+    paser.add_argument('--lr', default=1e-4, type=float, help="start learning rate")
     paser.add_argument('--batch_size', default=1)
     paser.add_argument('--weight_decay', default=1e-4)
     paser.add_argument('--num_workers', default=0)  # 大于0会与os.environ['CUDA_LAUNCH_BLOCKING'] = "1"冲突
     paser.add_argument('--test', action='store_true')
-    paser.add_argument('--transforms', choices=['my_tr_trs', 'source_tr_trs', 'css_tr_trs'], default='source_tr_trs')
-    paser.add_argument('--spacing', default=(1.5, 1.5, 2.0), type=ast.literal_eval, help="spacing for transforms")
-    paser.add_argument('--ref_window', default=(96, 96, 32))
+    paser.add_argument('--eta_min', type=float, default=1e-5, help='min learning rate')
+    paser.add_argument('--transforms', choices=['my_tr_trs', 'source_tr_trs', 'css_tr_trs'], default='css_tr_trs')
+    paser.add_argument('--spacing', default=(1.5, 1.5, 2.0), type=ast.literal_eval, help="spacing for transforms, Use the form ''(a, b, c)'' to specify")
+    paser.add_argument('--ref_window', default=(96, 96, 32), type=ast.literal_eval, help='reference window size & data_processing size for RandCropByPosNegLabeld')
     paser.add_argument('--merging_type', choices=['maxpool', 'avgpool', 'maxavgpool', 'conv'], default=None)
     paser.add_argument('--ref_weight', default=None, help='path of trained model')
     paser.add_argument('--use_1x1_conv_for_skip', action='store_true', help='use 1x1 conv3d to change channel in skip connection')
     paser.add_argument('--css_skip', action='store_true', help='using css skip connection')
     paser.add_argument('--use_css_skip_m4', action='store_true', help='using css skip connection m4')
     paser.add_argument('--use_css_skip_m1V2', action='store_true', help='using css skip connection m1v2')
-    paser.add_argument('--device', default=2, help='using gpu device for train')
-    # paser.add_argument('--scehduler', action='store_true')
+    paser.add_argument('--device', type=str, default="2", help='using gpu device for train')
+
     args = paser.parse_args()
     os.environ['CUDA_VISIBLE_DEVICES'] = args.device
     os.makedirs(args.exp_dir, exist_ok=True)
     log_dir = os.path.join(args.exp_dir, "logs")
-    args.fig_save_path = os.path.join(args.exp_dir, args.fig_save_path)
+    args.fig_save_path = os.path.join(args.exp_dir, args.fig_save_name)
     writer = SummaryWriter(log_dir=log_dir)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    # device = torch.device("cuda:1")
     args.device = device
     name_list = ['BG', 'EDH', 'IPH', 'IVH', 'SAH', 'SDH']
     args.name_list = name_list
-    set_determinism(seed=args.seed)
+    # set_determinism(seed=args.seed)
     print(args)
     if args.test:
         val_loader = generate_data(args)
@@ -204,14 +205,14 @@ def main():
     
     set_track_meta(False)
     if not args.test:
-        
+        set_determinism(seed=args.seed)
         dice_val_best, global_step_best, epoch_loss_values, metric_values = train(train_loader, val_loader, args, writer=writer)
         print(f"train completed, best_metric: {dice_val_best:.4f} " f"at iteration: {global_step_best}")
         draw_fig(epoch_loss_values, metric_values, args)
     else:
         model = css_model(args)
         mean_dice_val_include_bg, mean_dice_val_without_bg, dice_values = validation(model, val_loader, 0, args)
-        print(f"mean_dice_val_include_bg: {mean_dice_val_include_bg:.4f}, mean_dice_val_without_bg: {mean_dice_val_without_bg:.4f}, dice_values: {dice_values}")
+        print(f"mean_dice_val_include_bg: {mean_dice_val_include_bg:.5f}, mean_dice_val_without_bg: {mean_dice_val_without_bg:.5f}, dice_values: {dice_values}")
 
 
 if __name__ == '__main__':

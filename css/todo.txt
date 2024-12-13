@@ -1,9 +1,9 @@
-1、basline消融，确定一组参数[data, CropForegroundd, Spacingd, (RandCropByPosNegLabeld)]
+# 1、basline消融，确定一组参数[data, CropForegroundd, Spacingd, (RandCropByPosNegLabeld)]
 2、css_skip中要不要使用1x1卷积，要不要hidden_states_out[3] = self.css_add_skip(hidden_states_out[3])
 3、指标的除数可能有问题
 4、直接在hidden_states_out [0-4]上自加一个最大池化再送入encoder
 5、m1要不要加1x1x1conv3d
-6、训练初期前景分割Dice为0是否与lr有关？ lr=0.1时50eps Dice仍为0.0， lr=0.1时10eps Dice仍为0.0,loss=nan, lr=0.001时10eps Dice已经大于0.0
-7、纠正切片
-8、conv_merging不能只使用222的卷积核，要根据每层的特征图来
-9、不用把卷积后的结果给x0-x7都加一遍，直接cat到最后，让reduction降维
+# 6、训练初期前景分割Dice为0是否与lr有关？ lr=0.1时50eps Dice仍为0.0， lr=0.1时10eps Dice仍为0.0,loss=nan, lr=0.001时10eps Dice已经大于0.0
+# 7、纠正切片
+# 8、conv_merging不能只使用222的卷积核，要根据每层的特征图来
+# 9、不用把卷积后的结果给x0-x7都加一遍，直接cat到最后，让reduction降维

@@ -171,3 +171,4 @@ BSHD_src_data/
 /home/xiang/user/user_group/caoshangshang/RushBin/MONAI/css/model_swinvit.pt
 css/experiment/*
 css/test_result/*
+css/*.log

@@ -176,6 +176,7 @@ def main():
     paser.add_argument('--spacing', default=(1.5, 1.5, 2.0), type=ast.literal_eval, help="spacing for transforms, Use the form ''(a, b, c)'' to specify")
     paser.add_argument('--ref_window', default=(96, 96, 32), type=ast.literal_eval, help='reference window size & data_processing size for RandCropByPosNegLabeld')
     paser.add_argument('--merging_type', choices=['maxpool', 'avgpool', 'maxavgpool', 'conv'], default=None)
+    paser.add_argument('--use_ln', action='store_true', help='if specify, use LayerNorm for conv-Merging, else use InstanceNorm')
     paser.add_argument('--ref_weight', default=None, help='path of trained model')
     paser.add_argument('--use_1x1_conv_for_skip', action='store_true', help='use 1x1 conv3d to change channel in skip connection')
     paser.add_argument('--css_skip', action='store_true', help='using css skip connection')
@@ -209,6 +210,7 @@ def main():
         dice_val_best, global_step_best, epoch_loss_values, metric_values = train(train_loader, val_loader, args, writer=writer)
         print(f"train completed, best_metric: {dice_val_best:.4f} " f"at iteration: {global_step_best}")
         draw_fig(epoch_loss_values, metric_values, args)
+        writer.add_text
     else:
         model = css_model(args)
         mean_dice_val_include_bg, mean_dice_val_without_bg, dice_values = validation(model, val_loader, 0, args)

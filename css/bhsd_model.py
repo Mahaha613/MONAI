@@ -17,6 +17,7 @@ def css_model(args):
             feature_size=48,
             use_checkpoint=True,
             # use_v2=True,
+            use_ln = args.use_ln,
             merging_type=args.merging_type,
             css_skip=args.css_skip,
             use_1x1_conv_for_skip=args.use_1x1_conv_for_skip,

@@ -77,6 +77,7 @@ class SwinUNETR(nn.Module):
         downsample="merging",
         use_v2=False,
         merging_type=None,
+        use_ln=None,
         css_skip=None,
         use_1x1_conv_for_skip=None,
         use_css_skip_m4 = None,
@@ -125,6 +126,7 @@ class SwinUNETR(nn.Module):
         window_size = ensure_tuple_rep(7, spatial_dims)
         # *******************************************************************
         self.merging_type = merging_type
+        self.use_ln = use_ln
         self.css_skip = css_skip
         self.use_1x1_conv_for_skip = use_1x1_conv_for_skip
         self.use_css_skip_m4 = use_css_skip_m4
@@ -210,6 +212,7 @@ class SwinUNETR(nn.Module):
             spatial_dims=spatial_dims,
             downsample=look_up_option(downsample, MERGING_MODE) if isinstance(downsample, str) else downsample,  # 'merging'
             use_v2=use_v2,
+            use_ln=self.use_ln,
             merging_type=self.merging_type,
         )
 
@@ -851,18 +854,31 @@ class PatchMerging(PatchMergingV2):
     """The `PatchMerging` module previously defined in v0.9.0.
     merging_type: int, default to 0. Choices:[conv, maxpool, avgpool, maxavgpool]
     """
-    def __init__(self, dim: int, norm_layer: type[LayerNorm] = nn.LayerNorm, spatial_dims: int = 3, merging_type=None):
+    def __init__(self, dim: int, norm_layer: type[LayerNorm] = nn.LayerNorm, spatial_dims: int = 3, use_ln=None, merging_type=None):
         super().__init__(dim, norm_layer, spatial_dims)
         self.merging_type = merging_type
-        self.add_conv = Convolution(
-                spatial_dims=3,               # 3D 卷积
-                in_channels=dim,              # 输入通道数
-                out_channels=dim,             # 输出通道数
-                strides=(2, 2, 2),            # 步幅
-                kernel_size=(2, 2, 2),        # 卷积核大小
-                padding=0,   
-                # dropout=0.2      
-            ) 
+        self.use_ln = use_ln
+        if self.use_ln:
+            self.add_conv = Convolution(
+                    spatial_dims=3,               # 3D 卷积
+                    in_channels=dim,              # 输入通道数
+                    out_channels=dim,             # 输出通道数
+                    strides=(2, 2, 2),            # 步幅
+                    kernel_size=(2, 2, 2),        # 卷积核大小
+                    padding=0,  
+                    norm=("layer", {"normalized_shape": (dim, int(48*(24/dim)), int(48*(24/dim)), int(16*(24/dim)))}),
+                    # dropout=0.2      
+                ) 
+        else:
+            self.add_conv = Convolution(
+                    spatial_dims=3,               # 3D 卷积
+                    in_channels=dim,              # 输入通道数
+                    out_channels=dim,             # 输出通道数
+                    strides=(2, 2, 2),            # 步幅
+                    kernel_size=(2, 2, 2),        # 卷积核大小
+                    padding=0,  
+                    # dropout=0.2      
+                ) 
         self.max_avg_pool = MaxAvgPool(
                 spatial_dims=3,              # 3D 池化
                 kernel_size=(2, 2, 2),       # 池化核大小
@@ -1007,6 +1023,7 @@ class BasicLayer(nn.Module):
         norm_layer: type[LayerNorm] = nn.LayerNorm,
         downsample: nn.Module | None = None,
         use_checkpoint: bool = False,
+        use_ln=None,
         merging_type=None
     ) -> None:
         """
@@ -1027,6 +1044,7 @@ class BasicLayer(nn.Module):
 
         super().__init__()
         self.merging_type = merging_type
+        self.use_ln = use_ln
         self.window_size = window_size
         self.shift_size = tuple(i // 2 for i in window_size)
         self.no_shift = tuple(0 for i in window_size)
@@ -1052,7 +1070,7 @@ class BasicLayer(nn.Module):
         )
         self.downsample = downsample
         if callable(self.downsample):
-            self.downsample = downsample(dim=dim, norm_layer=norm_layer, spatial_dims=len(self.window_size), merging_type=self.merging_type)
+            self.downsample = downsample(dim=dim, norm_layer=norm_layer, spatial_dims=len(self.window_size), use_ln=self.use_ln, merging_type=self.merging_type)
 
     def forward(self, x):
         x_shape = x.size()
@@ -1114,6 +1132,7 @@ class SwinTransformer(nn.Module):
         spatial_dims: int = 3,
         downsample="merging",
         use_v2=False,
+        use_ln = None,
         merging_type=None
     ) -> None:
         """
@@ -1146,6 +1165,7 @@ class SwinTransformer(nn.Module):
         self.window_size = window_size
         self.patch_size = patch_size
 
+        self.use_ln = use_ln
         self.merging_type = merging_type
 
         self.patch_embed = PatchEmbed(
@@ -1183,6 +1203,7 @@ class SwinTransformer(nn.Module):
                 norm_layer=norm_layer,
                 downsample=down_sample_mod,
                 use_checkpoint=use_checkpoint,
+                use_ln=self.use_ln,
                 merging_type=self.merging_type,
             )
             if i_layer == 0:

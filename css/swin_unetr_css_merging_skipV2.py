@@ -365,6 +365,21 @@ class SwinUNETR(nn.Module):
             self.swinViT.layers4[0].downsample.norm.bias.copy_(
                 weights["state_dict"]["module.layers4.0.downsample.norm.bias"]
             )
+            
+            if self.merging_type == 'conv':
+                print("using 'He init' for add_conv")
+                torch.nn.init.kaiming_normal_(self.swinViT.layers1[0].downsample.add_conv.conv.weight)
+                torch.nn.init.zeros_(self.swinViT.layers1[0].downsample.add_conv.conv.bias)
+
+                torch.nn.init.kaiming_normal_(self.swinViT.layers2[0].downsample.add_conv.conv.weight)
+                torch.nn.init.zeros_(self.swinViT.layers2[0].downsample.add_conv.conv.bias)
+
+                torch.nn.init.kaiming_normal_(self.swinViT.layers3[0].downsample.add_conv.conv.weight)
+                torch.nn.init.zeros_(self.swinViT.layers3[0].downsample.add_conv.conv.bias)
+
+                torch.nn.init.kaiming_normal_(self.swinViT.layers4[0].downsample.add_conv.conv.weight)
+                torch.nn.init.zeros_(self.swinViT.layers4[0].downsample.add_conv.conv.bias)
+
 
     @torch.jit.unused
     def _check_input_size(self, spatial_shape):
@@ -862,6 +877,7 @@ class PatchMerging(PatchMergingV2):
         self.use_ln = use_ln
         self.relu = nn.ReLU()
         if self.use_ln:
+            print("using LayerNorm")
             self.add_conv = Convolution(
                     spatial_dims=3,               # 3D 卷积
                     in_channels=dim,              # 输入通道数
@@ -873,6 +889,7 @@ class PatchMerging(PatchMergingV2):
                     # dropout=0.2      
                 ) 
         else:
+            print("using InstanceNorm")
             self.add_conv = Convolution(
                     spatial_dims=3,               # 3D 卷积
                     in_channels=dim,              # 输入通道数

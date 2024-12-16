@@ -31,7 +31,12 @@ from css.bhsd_model import css_model
 
 def train(train_loader, val_loader, args, writer):
     torch.backends.cudnn.benchmark = True
-    model = css_model(args)
+    if args.num_device > 1:
+        device_list = [int(i) for i in args.device.split(',')]
+        model = css_model(args)
+        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=device_list)
+    else:
+        model = css_model(args)
     loss_function = DiceCELoss(to_onehot_y=True, softmax=True)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epoch, eta_min=args.eta_min)
@@ -162,12 +167,12 @@ def main():
     paser.add_argument('--exp_dir', default='css/experiment/swim_unetr/11.28', help="dir of saving files")
     paser.add_argument('--data_path', default='BSHD_src_data/preprocessed_image')
     paser.add_argument('--epoch', default=500)
-    paser.add_argument('--eval_num', default=96)
+    paser.add_argument('--eval_num', type=int, default=96)
     paser.add_argument('--model', type=str, choices=['swin_unetr', 'swin_unetr_css_merging'], default="swin_unetr")
     paser.add_argument('--seed', default=42)
     paser.add_argument('--fig_save_name', default='css/train.png', help="name of saving fig")
     paser.add_argument('--lr', default=1e-4, type=float, help="start learning rate")
-    paser.add_argument('--batch_size', default=1)
+    paser.add_argument('--batch_size', type=int, default=1)
     paser.add_argument('--weight_decay', default=1e-4)
     paser.add_argument('--num_workers', default=0)  # 大于0会与os.environ['CUDA_LAUNCH_BLOCKING'] = "1"冲突
     paser.add_argument('--test', action='store_true')
@@ -186,6 +191,8 @@ def main():
 
     args = paser.parse_args()
     os.environ['CUDA_VISIBLE_DEVICES'] = args.device
+    num_device = torch.cuda.device_count()
+    args.num_device = num_device
     os.makedirs(args.exp_dir, exist_ok=True)
     log_dir = os.path.join(args.exp_dir, "logs")
     args.fig_save_path = os.path.join(args.exp_dir, args.fig_save_name)

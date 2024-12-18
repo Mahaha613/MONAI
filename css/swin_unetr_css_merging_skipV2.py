@@ -166,14 +166,14 @@ class SwinUNETR(nn.Module):
                 padding=0
                 )
 
-            self.conv_1x1x1_m1 = Convolution(
-                spatial_dims=3,
-                in_channels=feature_size,
-                out_channels=feature_size,
-                kernel_size=1,
-                strides=1,
-                padding=0
-                )
+        self.conv_1x1x1_m1 = Convolution(
+            spatial_dims=3,
+            in_channels=feature_size,
+            out_channels=feature_size,
+            kernel_size=1,
+            strides=1,
+            padding=0
+            )
 # *******************************************************************
 
         if spatial_dims not in (2, 3):
@@ -379,7 +379,20 @@ class SwinUNETR(nn.Module):
 
                 torch.nn.init.kaiming_normal_(self.swinViT.layers4[0].downsample.add_conv.conv.weight)
                 torch.nn.init.zeros_(self.swinViT.layers4[0].downsample.add_conv.conv.bias)
+                
+            if self.use_ln:
+                print("using 'He init' ConvOnlyMerging")
+                torch.nn.init.kaiming_normal_(self.swinViT.layers1[0].downsample.ConvOnlyMerging.conv.weight)
+                torch.nn.init.zeros_(self.swinViT.layers1[0].downsample.ConvOnlyMerging.conv.bias)
 
+                torch.nn.init.kaiming_normal_(self.swinViT.layers2[0].downsample.ConvOnlyMerging.conv.weight)
+                torch.nn.init.zeros_(self.swinViT.layers2[0].downsample.ConvOnlyMerging.conv.bias)
+
+                torch.nn.init.kaiming_normal_(self.swinViT.layers3[0].downsample.ConvOnlyMerging.conv.weight)
+                torch.nn.init.zeros_(self.swinViT.layers3[0].downsample.ConvOnlyMerging.conv.bias)
+
+                torch.nn.init.kaiming_normal_(self.swinViT.layers4[0].downsample.ConvOnlyMerging.conv.weight)
+                torch.nn.init.zeros_(self.swinViT.layers4[0].downsample.ConvOnlyMerging.conv.bias)
 
     @torch.jit.unused
     def _check_input_size(self, spatial_shape):
@@ -877,17 +890,26 @@ class PatchMerging(PatchMergingV2):
         self.use_ln = use_ln
         self.relu = nn.ReLU()
         if self.use_ln:
-            print("using LayerNorm")
-            self.add_conv = Convolution(
-                    spatial_dims=3,               # 3D 卷积
-                    in_channels=dim,              # 输入通道数
-                    out_channels=dim,             # 输出通道数
-                    strides=(2, 2, 2),            # 步幅
-                    kernel_size=(2, 2, 2),        # 卷积核大小
-                    padding=0,  
-                    norm=("layer", {"normalized_shape": (dim, int(48*(24/dim)), int(48*(24/dim)), int(16*(24/dim)))}),
-                    # dropout=0.2      
-                ) 
+            # print("using LayerNorm")
+            # self.add_conv = Convolution(
+            #         spatial_dims=3,               # 3D 卷积
+            #         in_channels=dim,              # 输入通道数
+            #         out_channels=dim,             # 输出通道数
+            #         strides=(2, 2, 2),            # 步幅
+            #         kernel_size=(2, 2, 2),        # 卷积核大小
+            #         padding=0,  
+            #         norm=("layer", {"normalized_shape": (dim, int(48*(24/dim)), int(48*(24/dim)), int(16*(24/dim)))}),
+            #         # dropout=0.2      
+            #     ) 
+            print("using ConvOnlyMerging")
+            self.ConvOnlyMerging = Convolution(
+                spatial_dims=3,           
+                in_channels=dim,             
+                out_channels=2* dim,           
+                strides=(2, 2, 2),          
+                kernel_size=(2, 2, 2),       
+                padding=0,       
+            )
         else:
             print("using InstanceNorm")
             self.add_conv = Convolution(
@@ -974,6 +996,12 @@ class PatchMerging(PatchMergingV2):
             x = self.norm_css(x)
             x = self.reduction_css(x)  # self.reduction = nn.Linear(9 * dim, 2 * dim, bias=False)
             return x
+        
+        elif self.use_ln:
+            x = torch.permute(x, (0, 4, 1, 2, 3))
+            output = torch.permute(self.ConvOnlyMerging(x), (0, 2, 3, 4, 1))
+            return output
+        
         else: 
             # print("using default merging")
             x = torch.cat([x0, x1, x2, x3, x4, x5, x6, x7], -1)

@@ -47,7 +47,7 @@ def get_transforms(trans, device, spacing, spatial_size, is_train=True):
                 b_max=1.0,
                 clip=True,
             ),
-            CropForegroundd(keys=["image", "label"], source_key="image"),
+            CropForegroundd(keys=["image", "label"], source_key="image", allow_smaller=True),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
             Spacingd(
                 keys=["image", "label"],
@@ -98,7 +98,7 @@ def get_transforms(trans, device, spacing, spatial_size, is_train=True):
             LoadImaged(keys=["image", "label"], ensure_channel_first=True),
             ClipIntensityPercentilesd(keys=["image"], lower=5, upper=95, sharpness_factor=10),
             ScaleIntensityRanged(keys=["image"], a_min=-4500, a_max=4500, b_min=0, b_max=1.0, clip=True),
-            CropForegroundd(keys=["image", "label"], source_key="image"),
+            CropForegroundd(keys=["image", "label"], source_key="image", allow_smaller=True),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
             Spacingd(
                 keys=["image", "label"],
@@ -112,7 +112,7 @@ def get_transforms(trans, device, spacing, spatial_size, is_train=True):
     source_tr_trs = Compose(       
         [
             LoadImaged(keys=["image", "label"], ensure_channel_first=True),
-            CropForegroundd(keys=["image", "label"], source_key="image"),  # 消融，功能与RandCropByPosNegLabeld类似
+            CropForegroundd(keys=["image", "label"], source_key="image", allow_smaller=True),  # 消融，功能与RandCropByPosNegLabeld类似
             Orientationd(keys=["image", "label"], axcodes="RAS"),
             Spacingd(
                 keys=["image", "label"],
@@ -161,7 +161,7 @@ def get_transforms(trans, device, spacing, spatial_size, is_train=True):
     source_val_trs = Compose(
         [
             LoadImaged(keys=["image", "label"], ensure_channel_first=True),
-            CropForegroundd(keys=["image", "label"], source_key="image"),
+            CropForegroundd(keys=["image", "label"], source_key="image", allow_smaller=True),
             Orientationd(keys=["image", "label"], axcodes="RAS"),
             Spacingd(
                 keys=["image", "label"],

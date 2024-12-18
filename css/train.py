@@ -2,7 +2,7 @@ import os
 import ast
 import argparse
 from torch.utils.tensorboard import SummaryWriter
-os.environ['CUDA_LAUNCH_BLOCKING'] = "0"
+# os.environ['CUDA_LAUNCH_BLOCKING'] = "0"
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from glob import glob
@@ -31,12 +31,7 @@ from css.bhsd_model import css_model
 
 def train(train_loader, val_loader, args, writer):
     torch.backends.cudnn.benchmark = True
-    if args.num_device > 1:
-        device_list = [int(i) for i in args.device.split(',')]
-        model = css_model(args)
-        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=device_list)
-    else:
-        model = css_model(args)
+    model = css_model(args)
     loss_function = DiceCELoss(to_onehot_y=True, softmax=True)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epoch, eta_min=args.eta_min)
@@ -60,11 +55,12 @@ def train(train_loader, val_loader, args, writer):
                 loss = loss_function(logit_map, y)
             scaler.scale(loss).backward()
             epoch_loss += loss.item()
+            # if step % args.grad_accumulate_step == 0:
             scaler.unscale_(optimizer)
             scaler.step(optimizer)
             scaler.update()
             optimizer.zero_grad()
-            writer.add_scalar('Train/Loss', loss.item(), epoch_idx * len(train_loader) + step)
+            # writer.add_scalar('Train/Loss', loss.item(), epoch_idx * len(train_loader) + step)
             epoch_iterator.set_description(  
                 f"Training ({epoch_idx} / {args.epoch} Steps) (loss={loss:2.5f})"
             )
@@ -90,6 +86,7 @@ def train(train_loader, val_loader, args, writer):
                     print(
                         "Model Was Not Saved ! Current Best Avg. Dice: {} Current Best cls. Dice: {} Current Avg. Dice: {} cls. Dice: {}".format(dice_val_best, cls_dice_val_best, mean_dice_val_without_bg, class_dice_vals))
         scheduler.step()
+        writer.add_scalar('Train/Loss', loss.item(), epoch_idx)
         writer.add_scalar('Train/LR', scheduler.get_last_lr()[0], epoch_idx)
 
 
@@ -168,11 +165,12 @@ def main():
     paser.add_argument('--data_path', default='BSHD_src_data/preprocessed_image')
     paser.add_argument('--epoch', default=500)
     paser.add_argument('--eval_num', type=int, default=96)
-    paser.add_argument('--model', type=str, choices=['swin_unetr', 'swin_unetr_css_merging'], default="swin_unetr")
+    paser.add_argument('--model', type=str, choices=['swin_unetr', 'swin_unetr_css_merging', 'swin_unetr_css_MultiScaleMerging'], default="swin_unetr")
     paser.add_argument('--seed', default=42)
     paser.add_argument('--fig_save_name', default='css/train.png', help="name of saving fig")
     paser.add_argument('--lr', default=1e-4, type=float, help="start learning rate")
     paser.add_argument('--batch_size', type=int, default=1)
+    paser.add_argument('--grad_accumulate_step', type=int, default=4)
     paser.add_argument('--weight_decay', default=1e-4)
     paser.add_argument('--num_workers', default=0)  # 大于0会与os.environ['CUDA_LAUNCH_BLOCKING'] = "1"冲突
     paser.add_argument('--test', action='store_true')
@@ -181,10 +179,11 @@ def main():
     paser.add_argument('--spacing', default=(1.5, 1.5, 2.0), type=ast.literal_eval, help="spacing for transforms, Use the form ''(a, b, c)'' to specify")
     paser.add_argument('--ref_window', default=(96, 96, 32), type=ast.literal_eval, help='reference window size & data_processing size for RandCropByPosNegLabeld')
     paser.add_argument('--merging_type', choices=['maxpool', 'avgpool', 'maxavgpool', 'conv'], default=None)
-    paser.add_argument('--use_ln', action='store_true', help='if specify, use LayerNorm for conv-Merging, else use InstanceNorm')
+    paser.add_argument('--use_ln', action='store_true', help='if specify, use LayerNorm for conv-Merging, else use InstanceNorm, !!!now for ConvOnlyMerging!!!')
     paser.add_argument('--ref_weight', default=None, help='path of trained model')
-    paser.add_argument('--use_1x1_conv_for_skip', action='store_true', help='use 1x1 conv3d to change channel in skip connection')
+    
     paser.add_argument('--css_skip', action='store_true', help='using css skip connection')
+    paser.add_argument('--use_1x1_conv_for_skip', action='store_true', help='use 1x1 conv3d to change channel in skip connection')
     paser.add_argument('--use_css_skip_m4', action='store_true', help='using css skip connection m4')
     paser.add_argument('--use_css_skip_m1V2', action='store_true', help='using css skip connection m1v2')
     paser.add_argument('--device', type=str, default="2", help='using gpu device for train')

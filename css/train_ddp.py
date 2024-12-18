@@ -29,12 +29,20 @@ from css.bhsd_model import css_model
 from torch.nn.parallel import DistributedDataParallel as DDP
 import torch.distributed as dist
 
-def setup_distributed_training():
-    dist.init_process_group(backend='nccl')
-    local_rank = int(os.getenv("LOCAL_RANK", "0"))
-    print(f"local rank: {local_rank}")
-    torch.cuda.set_device(local_rank)
-    return local_rank
+def setup_distributed_training(args):
+    if args.debug:
+        os.environ['MASTER_ADDR'] = 'localhost'
+        os.environ['MASTER_PORT'] = '12355'  # any free port
+        dist.init_process_group(backend='nccl', rank=0, world_size=1)
+        local_rank = int(os.getenv("LOCAL_RANK", "0"))
+        torch.cuda.set_device(local_rank)
+        return local_rank
+    else:
+        dist.init_process_group(backend='nccl')
+        local_rank = int(os.getenv("LOCAL_RANK", "0"))
+        print(f"local rank: {local_rank}")
+        torch.cuda.set_device(local_rank)
+        return local_rank
 
 def cleanup_distributed_training():
     dist.destroy_process_group()
@@ -59,7 +67,7 @@ def train(train_loader, val_loader, args, writer, model):
         epoch_iterator = tqdm(train_loader, desc="Training (X / X Steps) (loss=X.X)", dynamic_ncols=True) if args.local_rank == 0 else train_loader
         for step, batch in enumerate(epoch_iterator):
             step += 1
-            x, y = (batch["image"].to(args.device), batch["label"].to(args.device))
+            x, y = (batch[0]["image"].to(args.device), batch[0]["label"].to(args.device))
             with torch.cuda.amp.autocast():
                 logit_map = model(x)
                 loss = loss_function(logit_map, y)
@@ -113,7 +121,7 @@ def validation(model, val_loader, epoch_idx, args):
 
     with torch.no_grad():
         for batch in epoch_iterator_val:
-            val_inputs, val_labels = (batch["image"].to(args.device), batch["label"].to(args.device))
+            val_inputs, val_labels = (batch[0]["image"].to(args.device), batch[0]["label"].to(args.device))
             with torch.cuda.amp.autocast():
                 val_outputs = sliding_window_inference(val_inputs, args.ref_window, 2, model)
             val_labels_list = decollate_batch(val_labels)
@@ -194,11 +202,12 @@ def main():
     paser.add_argument('--use_css_skip_m4', action='store_true', help='using css skip connection m4')
     paser.add_argument('--use_css_skip_m1V2', action='store_true', help='using css skip connection m1v2')
     paser.add_argument('--device', type=str, default="1,2", help='using gpu device for train')
+    paser.add_argument('--debug', action='store_true')
 
     args = paser.parse_args()
     
-    os.environ['CUDA_VISIBLE_DEVICES'] = str(args.device)
-    args.local_rank = setup_distributed_training()
+    # os.environ['CUDA_VISIBLE_DEVICES'] = str(args.device)
+    args.local_rank = setup_distributed_training(args)
     device = torch.device(f"cuda:{args.local_rank}")
     args.device = device
 

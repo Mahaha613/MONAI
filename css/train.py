@@ -165,7 +165,7 @@ def main():
     paser.add_argument('--data_path', default='BSHD_src_data/preprocessed_image')
     paser.add_argument('--epoch', default=500)
     paser.add_argument('--eval_num', type=int, default=96)
-    paser.add_argument('--model', type=str, choices=['swin_unetr', 'swin_unetr_css_merging', 'swin_unetr_css_MultiScaleMerging'], default="swin_unetr")
+    paser.add_argument('--model', type=str, choices=['swin_unetr', 'swin_unetr_css_merging', 'swin_unetr_css_MultiScaleMerging', 'SwinUNETR_css_merging_skipV3_AddEncForX3', 'SwinUNETR_css_merging_skipV3_maxpoolskip'], default="swin_unetr")
     paser.add_argument('--seed', default=42)
     paser.add_argument('--fig_save_name', default='css/train.png', help="name of saving fig")
     paser.add_argument('--lr', default=1e-4, type=float, help="start learning rate")
@@ -185,6 +185,7 @@ def main():
     paser.add_argument('--css_skip', action='store_true', help='using css skip connection')
     paser.add_argument('--use_1x1_conv_for_skip', action='store_true', help='use 1x1 conv3d to change channel in skip connection')
     paser.add_argument('--use_css_skip_m4', action='store_true', help='using css skip connection m4')
+    paser.add_argument('--use_dec_change_C_in_css_skip', action='store_true', help='when using css skip connection and not using 1x1_conv_for_skip, this parameter need to be used')
     paser.add_argument('--use_css_skip_m1V2', action='store_true', help='using css skip connection m1v2')
     paser.add_argument('--device', type=str, default="2", help='using gpu device for train')
 

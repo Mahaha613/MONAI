@@ -80,6 +80,7 @@ class SwinUNETR(nn.Module):
         use_ln=None,
         css_skip=None,
         use_1x1_conv_for_skip=None,
+        use_dec_change_C_in_css_skip=None,
         use_css_skip_m4 = None,
         use_css_skip_m1V2 = None,
     ) -> None:
@@ -129,8 +130,11 @@ class SwinUNETR(nn.Module):
         self.use_ln = use_ln
         self.css_skip = css_skip
         self.use_1x1_conv_for_skip = use_1x1_conv_for_skip
+        self.use_dec_change_C_in_css_skip = use_dec_change_C_in_css_skip
         self.use_css_skip_m4 = use_css_skip_m4
         self.use_css_skip_m1V2 = use_css_skip_m1V2
+
+        
         if self.css_skip:
             self.max_pool = MaxAvgPool(
                 spatial_dims=3,
@@ -141,7 +145,7 @@ class SwinUNETR(nn.Module):
         if self.use_1x1_conv_for_skip:
             self.conv_1x1x1_m4 = Convolution(
                 spatial_dims=3,
-                in_channels=4*feature_size,
+                in_channels=12*feature_size,
                 out_channels=8*feature_size,
                 kernel_size=1,
                 strides=1,
@@ -150,7 +154,7 @@ class SwinUNETR(nn.Module):
             
             self.conv_1x1x1_m3 = Convolution(
                 spatial_dims=3,
-                in_channels=2*feature_size,
+                in_channels=6*feature_size,
                 out_channels=4*feature_size,
                 kernel_size=1,
                 strides=1,
@@ -159,21 +163,21 @@ class SwinUNETR(nn.Module):
             
             self.conv_1x1x1_m2 = Convolution(
                 spatial_dims=3,
-                in_channels=feature_size,
+                in_channels=3*feature_size,
                 out_channels=2*feature_size,
                 kernel_size=1,
                 strides=1,
                 padding=0
                 )
 
-        self.conv_1x1x1_m1 = Convolution(
-            spatial_dims=3,
-            in_channels=feature_size,
-            out_channels=feature_size,
-            kernel_size=1,
-            strides=1,
-            padding=0
-            )
+            self.conv_1x1x1_m1 = Convolution(
+                spatial_dims=3,
+                in_channels=2*feature_size,
+                out_channels=feature_size,
+                kernel_size=1,
+                strides=1,
+                padding=0
+                )
 # *******************************************************************
 
         if spatial_dims not in (2, 3):
@@ -284,6 +288,7 @@ class SwinUNETR(nn.Module):
             upsample_kernel_size=2,
             norm_name=norm_name,
             res_block=True,
+            use_dec_change_C_in_css_skip=self.use_dec_change_C_in_css_skip,
         )
 
         self.decoder4 = UnetrUpBlock(
@@ -294,6 +299,7 @@ class SwinUNETR(nn.Module):
             upsample_kernel_size=2,
             norm_name=norm_name,
             res_block=True,
+            use_dec_change_C_in_css_skip=self.use_dec_change_C_in_css_skip,
         )
 
         self.decoder3 = UnetrUpBlock(
@@ -304,6 +310,7 @@ class SwinUNETR(nn.Module):
             upsample_kernel_size=2,
             norm_name=norm_name,
             res_block=True,
+            use_dec_change_C_in_css_skip=self.use_dec_change_C_in_css_skip,
         )
         self.decoder2 = UnetrUpBlock(
             spatial_dims=spatial_dims,
@@ -313,6 +320,8 @@ class SwinUNETR(nn.Module):
             upsample_kernel_size=2,
             norm_name=norm_name,
             res_block=True,
+            use_dec_change_C_in_css_skip=self.use_dec_change_C_in_css_skip,
+            m1=24,
         )
 
         self.decoder1 = UnetrUpBlock(
@@ -441,43 +450,36 @@ class SwinUNETR(nn.Module):
         enc2 = self.encoder3(hidden_states_out[1])  # enc2:torch.Size([4, 96, 24, 24, 8]) same as hidden_states_out[1]
         enc3 = self.encoder4(hidden_states_out[2])  # enc3:torch.Size([4, 192, 12, 12, 4]) same as hidden_states_out[2]
         if self.css_skip:
-            if self.use_css_skip_m4:
-                m4 = self.css_add_skip(enc3)
-                if self.use_1x1_conv_for_skip:
-                    m4 = self.conv_1x1x1_m4(m4)
-                    hidden_states_out[3] = m4 + hidden_states_out[3]
-                else:
-                    m4 = torch.cat([m4, m4], dim=1)
-                    hidden_states_out[3] = m4 + hidden_states_out[3]
+            m4 = self.css_add_skip(enc3)
+            if self.use_1x1_conv_for_skip:
+                hidden_states_out[3] = self.conv_1x1x1_m4(torch.cat([hidden_states_out[3], m4], dim=1))
+            else:
+                hidden_states_out[3] = torch.cat([hidden_states_out[3], m4], dim=1)
 
             m3 = self.css_add_skip(enc2)  # m3:torch.Size([4, 96, 12, 12, 4])
             if self.use_1x1_conv_for_skip:
-                m3 = self.conv_1x1x1_m3(m3)
-                enc3 = m3 + enc3
+                enc3 = self.conv_1x1x1_m3(torch.cat([enc3, m3], dim=1))
             else:
-                m3 = torch.cat([m3, m3], dim=1)
-                enc3 = m3 + enc3
+                enc3 = torch.cat([enc3, m3], dim=1)
 
             m2 = self.css_add_skip(enc1)
             if self.use_1x1_conv_for_skip:
-                m2 = self.conv_1x1x1_m2(m2)
-                enc2 = m2 + enc2
+                enc2 = self.conv_1x1x1_m2(torch.cat([enc2, m2], dim=1))
             else:
-                m2 = torch.cat([m2, m2], dim=1)
-                enc2 = m2 + enc2
+                enc2 = torch.cat([enc2, m2], dim=1)
 
             m1 = self.css_add_skip(enc0)  # no need to double the channels
-            if self.use_css_skip_m1V2:
-                m1 = self.conv_1x1x1_m1(m1)
-                enc1 = m1 + enc1
+            if self.use_1x1_conv_for_skip:
+                enc1 = self.conv_1x1x1_m1(torch.cat([enc1, m1], dim=1))
             else:
-                enc1 = m1 + enc1
+                enc1 = torch.cat([enc1, m1], dim=1)
 
         dec4 = self.encoder10(hidden_states_out[4])
         dec3 = self.decoder5(dec4, hidden_states_out[3])
         dec2 = self.decoder4(dec3, enc3)
         dec1 = self.decoder3(dec2, enc2)
         dec0 = self.decoder2(dec1, enc1)
+
         out = self.decoder1(dec0, enc0)
         logits = self.out(out)
         return logits

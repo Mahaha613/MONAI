@@ -256,15 +256,15 @@ class SwinUNETR(nn.Module):
             res_block=True,
         )
 
-        # self.cssencoder = UnetrBasicBlock(
-        #     spatial_dims=spatial_dims,
-        #     in_channels=8 * feature_size,
-        #     out_channels=8 * feature_size,
-        #     kernel_size=3,
-        #     stride=1,
-        #     norm_name=norm_name,
-        #     res_block=True,
-        # )
+        self.cssencoder = UnetrBasicBlock(
+            spatial_dims=spatial_dims,
+            in_channels=8 * feature_size,
+            out_channels=8 * feature_size,
+            kernel_size=3,
+            stride=1,
+            norm_name=norm_name,
+            res_block=True,
+        )
 
         self.encoder10 = UnetrBasicBlock(
             spatial_dims=spatial_dims,
@@ -440,6 +440,7 @@ class SwinUNETR(nn.Module):
         enc1 = self.encoder2(hidden_states_out[0])  # enc1:torch.Size([4, 48, 48, 48, 16]) same as hidden_states_out[0]
         enc2 = self.encoder3(hidden_states_out[1])  # enc2:torch.Size([4, 96, 24, 24, 8]) same as hidden_states_out[1]
         enc3 = self.encoder4(hidden_states_out[2])  # enc3:torch.Size([4, 192, 12, 12, 4]) same as hidden_states_out[2]
+        enc4 = self.cssencoder(hidden_states_out[3])
         if self.css_skip:
             if self.use_css_skip_m4:
                 m4 = self.css_add_skip(enc3)
@@ -474,7 +475,8 @@ class SwinUNETR(nn.Module):
                 enc1 = m1 + enc1
 
         dec4 = self.encoder10(hidden_states_out[4])
-        dec3 = self.decoder5(dec4, hidden_states_out[3])
+        # dec3 = self.decoder5(dec4, hidden_states_out[3])
+        dec3 = self.decoder5(dec4, enc4)
         dec2 = self.decoder4(dec3, enc3)
         dec1 = self.decoder3(dec2, enc2)
         dec0 = self.decoder2(dec1, enc1)

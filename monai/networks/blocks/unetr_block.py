@@ -34,6 +34,8 @@ class UnetrUpBlock(nn.Module):
         upsample_kernel_size: Sequence[int] | int,
         norm_name: tuple | str,
         res_block: bool = False,
+        use_dec_change_C_in_css_skip=None,
+        m1=0,
     ) -> None:
         """
         Args:
@@ -49,6 +51,7 @@ class UnetrUpBlock(nn.Module):
 
         super().__init__()
         upsample_stride = upsample_kernel_size
+
         self.transp_conv = get_conv_layer(
             spatial_dims,
             in_channels,
@@ -59,7 +62,17 @@ class UnetrUpBlock(nn.Module):
             is_transposed=True,
         )
 
-        if res_block:
+        if res_block and use_dec_change_C_in_css_skip:
+            self.conv_block = UnetResBlock(
+                spatial_dims,
+                out_channels + out_channels + int(out_channels / 2) + int(m1),
+                out_channels,
+                kernel_size=kernel_size,
+                stride=1,
+                norm_name=norm_name,
+            )
+
+        elif res_block:
             self.conv_block = UnetResBlock(
                 spatial_dims,
                 out_channels + out_channels,

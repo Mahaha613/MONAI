@@ -190,7 +190,7 @@ class PatchEmbed(nn.Module):
     def forward(self, x):
         x_shape = x.size()
         if len(x_shape) == 5:
-            _, _, d, h, w = x_shape
+            _, _, d, h, w = x_shape  # 默认dhw，实际hwd
             if w % self.patch_size[2] != 0:
                 x = F.pad(x, (0, self.patch_size[2] - w % self.patch_size[2]))
             if h % self.patch_size[1] != 0:
@@ -206,7 +206,7 @@ class PatchEmbed(nn.Module):
                 x = F.pad(x, (0, 0, 0, self.patch_size[0] - h % self.patch_size[0]))
 
         x = self.proj(x)  # conv3d(1, 48, keenel_size=(2,2,2), stride=(2,2,2)))  torch.Size([4, 48, 48, 48, 16])
-        if self.norm is not None:
+        if self.norm is not None:  #none
             x_shape = x.size()
             x = x.flatten(2).transpose(1, 2)
             x = self.norm(x)

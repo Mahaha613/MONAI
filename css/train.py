@@ -165,7 +165,11 @@ def main():
     paser.add_argument('--data_path', default='BSHD_src_data/preprocessed_image')
     paser.add_argument('--epoch', default=500)
     paser.add_argument('--eval_num', type=int, default=96)
-    paser.add_argument('--model', type=str, choices=['swin_unetr', 'swin_unetr_css_merging', 'swin_unetr_css_MultiScaleMerging', 'SwinUNETR_css_merging_skipV3_AddEncForX3', 'SwinUNETR_css_merging_skipV3_maxpoolskip'], default="swin_unetr")
+    paser.add_argument('--model', type=str, choices=['swin_unetr', 'swin_unetr_css_merging', 'swin_unetr_css_MultiScaleMerging', 
+                                                     'SwinUNETR_css_merging_skipV3_AddEncForX3', 'SwinUNETR_css_merging_skipV3_maxpoolskip',
+                                                     'SwinUNETR_css_merging_skipV3_avgpoolskip','SwinUNETR_css_merging_skipV3_maxavgpoolskip',
+                                                     'SwinUNETR_css_merging_skipV3_convskip', 'SwinUNETR_css_merging_skipV3_convskip_AddM0',
+                                                     'SwinUNETR_css_merging__imageconvInSkip', 'SwinUNETR_css_merging_imageconvMerging'], default="swin_unetr")
     paser.add_argument('--seed', default=42)
     paser.add_argument('--fig_save_name', default='css/train.png', help="name of saving fig")
     paser.add_argument('--lr', default=1e-4, type=float, help="start learning rate")
@@ -178,7 +182,7 @@ def main():
     paser.add_argument('--transforms', choices=['my_tr_trs', 'source_tr_trs', 'css_tr_trs'], default='css_tr_trs')
     paser.add_argument('--spacing', default=(1.5, 1.5, 2.0), type=ast.literal_eval, help="spacing for transforms, Use the form ''(a, b, c)'' to specify")
     paser.add_argument('--ref_window', default=(96, 96, 32), type=ast.literal_eval, help='reference window size & data_processing size for RandCropByPosNegLabeld')
-    paser.add_argument('--merging_type', choices=['maxpool', 'avgpool', 'maxavgpool', 'conv'], default=None)
+    paser.add_argument('--merging_type', choices=['maxpool', 'avgpool', 'maxavgpool', 'conv', 'img_conv'], default=None)
     paser.add_argument('--use_ln', action='store_true', help='if specify, use LayerNorm for conv-Merging, else use InstanceNorm, !!!now for ConvOnlyMerging!!!')
     paser.add_argument('--ref_weight', default=None, help='path of trained model')
     

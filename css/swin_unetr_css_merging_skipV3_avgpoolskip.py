@@ -385,45 +385,45 @@ class SwinUNETR(nn.Module):
                 weights["state_dict"]["module.layers4.0.downsample.norm.bias"]
             )
             
-            if self.merging_type == 'conv':
-                print("using 'He init' for add_conv")
-                torch.nn.init.kaiming_normal_(self.swinViT.layers1[0].downsample.add_222conv.conv.weight)
-                torch.nn.init.zeros_(self.swinViT.layers1[0].downsample.add_222conv.conv.bias)
+            # if self.merging_type == 'conv':
+            #     print("using 'He init' for add_conv")
+            #     torch.nn.init.kaiming_normal_(self.swinViT.layers1[0].downsample.add_222conv.conv.weight)
+            #     torch.nn.init.zeros_(self.swinViT.layers1[0].downsample.add_222conv.conv.bias)
 
-                torch.nn.init.kaiming_normal_(self.swinViT.layers2[0].downsample.add_222conv.conv.weight)
-                torch.nn.init.zeros_(self.swinViT.layers2[0].downsample.add_222conv.conv.bias)
+            #     torch.nn.init.kaiming_normal_(self.swinViT.layers2[0].downsample.add_222conv.conv.weight)
+            #     torch.nn.init.zeros_(self.swinViT.layers2[0].downsample.add_222conv.conv.bias)
 
-                torch.nn.init.kaiming_normal_(self.swinViT.layers3[0].downsample.add_222conv.conv.weight)
-                torch.nn.init.zeros_(self.swinViT.layers3[0].downsample.add_222conv.conv.bias)
+            #     torch.nn.init.kaiming_normal_(self.swinViT.layers3[0].downsample.add_222conv.conv.weight)
+            #     torch.nn.init.zeros_(self.swinViT.layers3[0].downsample.add_222conv.conv.bias)
 
-                torch.nn.init.kaiming_normal_(self.swinViT.layers4[0].downsample.add_222conv.conv.weight)
-                torch.nn.init.zeros_(self.swinViT.layers4[0].downsample.add_222conv.conv.bias)
+            #     torch.nn.init.kaiming_normal_(self.swinViT.layers4[0].downsample.add_222conv.conv.weight)
+            #     torch.nn.init.zeros_(self.swinViT.layers4[0].downsample.add_222conv.conv.bias)
 
-                torch.nn.init.kaiming_normal_(self.swinViT.layers1[0].downsample.add_442conv.conv.weight)
-                torch.nn.init.zeros_(self.swinViT.layers1[0].downsample.add_442conv.conv.bias)
+            #     torch.nn.init.kaiming_normal_(self.swinViT.layers1[0].downsample.add_442conv.conv.weight)
+            #     torch.nn.init.zeros_(self.swinViT.layers1[0].downsample.add_442conv.conv.bias)
 
-                torch.nn.init.kaiming_normal_(self.swinViT.layers2[0].downsample.add_442conv.conv.weight)
-                torch.nn.init.zeros_(self.swinViT.layers2[0].downsample.add_442conv.conv.bias)
+            #     torch.nn.init.kaiming_normal_(self.swinViT.layers2[0].downsample.add_442conv.conv.weight)
+            #     torch.nn.init.zeros_(self.swinViT.layers2[0].downsample.add_442conv.conv.bias)
 
-                torch.nn.init.kaiming_normal_(self.swinViT.layers3[0].downsample.add_442conv.conv.weight)
-                torch.nn.init.zeros_(self.swinViT.layers3[0].downsample.add_442conv.conv.bias)
+            #     torch.nn.init.kaiming_normal_(self.swinViT.layers3[0].downsample.add_442conv.conv.weight)
+            #     torch.nn.init.zeros_(self.swinViT.layers3[0].downsample.add_442conv.conv.bias)
 
-                torch.nn.init.kaiming_normal_(self.swinViT.layers4[0].downsample.add_442conv.conv.weight)
-                torch.nn.init.zeros_(self.swinViT.layers4[0].downsample.add_442conv.conv.bias)
+            #     torch.nn.init.kaiming_normal_(self.swinViT.layers4[0].downsample.add_442conv.conv.weight)
+            #     torch.nn.init.zeros_(self.swinViT.layers4[0].downsample.add_442conv.conv.bias)
                 
-            if self.use_ln:
-                print("using 'He init' ConvOnlyMerging")
-                torch.nn.init.kaiming_normal_(self.swinViT.layers1[0].downsample.ConvOnlyMerging.conv.weight)
-                torch.nn.init.zeros_(self.swinViT.layers1[0].downsample.ConvOnlyMerging.conv.bias)
+            # if self.use_ln:
+            #     print("using 'He init' ConvOnlyMerging")
+            #     torch.nn.init.kaiming_normal_(self.swinViT.layers1[0].downsample.ConvOnlyMerging.conv.weight)
+            #     torch.nn.init.zeros_(self.swinViT.layers1[0].downsample.ConvOnlyMerging.conv.bias)
 
-                torch.nn.init.kaiming_normal_(self.swinViT.layers2[0].downsample.ConvOnlyMerging.conv.weight)
-                torch.nn.init.zeros_(self.swinViT.layers2[0].downsample.ConvOnlyMerging.conv.bias)
+            #     torch.nn.init.kaiming_normal_(self.swinViT.layers2[0].downsample.ConvOnlyMerging.conv.weight)
+            #     torch.nn.init.zeros_(self.swinViT.layers2[0].downsample.ConvOnlyMerging.conv.bias)
 
-                torch.nn.init.kaiming_normal_(self.swinViT.layers3[0].downsample.ConvOnlyMerging.conv.weight)
-                torch.nn.init.zeros_(self.swinViT.layers3[0].downsample.ConvOnlyMerging.conv.bias)
+            #     torch.nn.init.kaiming_normal_(self.swinViT.layers3[0].downsample.ConvOnlyMerging.conv.weight)
+            #     torch.nn.init.zeros_(self.swinViT.layers3[0].downsample.ConvOnlyMerging.conv.bias)
 
-                torch.nn.init.kaiming_normal_(self.swinViT.layers4[0].downsample.ConvOnlyMerging.conv.weight)
-                torch.nn.init.zeros_(self.swinViT.layers4[0].downsample.ConvOnlyMerging.conv.bias)
+            #     torch.nn.init.kaiming_normal_(self.swinViT.layers4[0].downsample.ConvOnlyMerging.conv.weight)
+            #     torch.nn.init.zeros_(self.swinViT.layers4[0].downsample.ConvOnlyMerging.conv.bias)
 
     @torch.jit.unused
     def _check_input_size(self, spatial_shape):

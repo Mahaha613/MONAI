@@ -80,6 +80,7 @@ class SwinUNETR(nn.Module):
         use_ln=None,
         css_skip=None,
         use_1x1_conv_for_skip=None,
+        use_dec_change_C_in_css_skip=None,
         use_css_skip_m4 = None,
         use_css_skip_m1V2 = None,
     ) -> None:
@@ -129,6 +130,7 @@ class SwinUNETR(nn.Module):
         self.use_ln = use_ln
         self.css_skip = css_skip
         self.use_1x1_conv_for_skip = use_1x1_conv_for_skip
+        self.use_dec_change_C_in_css_skip = use_dec_change_C_in_css_skip
         self.use_css_skip_m4 = use_css_skip_m4
         self.use_css_skip_m1V2 = use_css_skip_m1V2
         
@@ -276,6 +278,7 @@ class SwinUNETR(nn.Module):
             upsample_kernel_size=2,
             norm_name=norm_name,
             res_block=True,
+            use_dec_change_C_in_css_skip=self.use_dec_change_C_in_css_skip,
         )
 
         self.decoder4 = UnetrUpBlock(
@@ -286,6 +289,7 @@ class SwinUNETR(nn.Module):
             upsample_kernel_size=2,
             norm_name=norm_name,
             res_block=True,
+            use_dec_change_C_in_css_skip=self.use_dec_change_C_in_css_skip,
         )
 
         self.decoder3 = UnetrUpBlock(
@@ -296,6 +300,7 @@ class SwinUNETR(nn.Module):
             upsample_kernel_size=2,
             norm_name=norm_name,
             res_block=True,
+            use_dec_change_C_in_css_skip=self.use_dec_change_C_in_css_skip,
         )
         self.decoder2 = UnetrUpBlock(
             spatial_dims=spatial_dims,
@@ -305,6 +310,8 @@ class SwinUNETR(nn.Module):
             upsample_kernel_size=2,
             norm_name=norm_name,
             res_block=True,
+            use_dec_change_C_in_css_skip=self.use_dec_change_C_in_css_skip,
+            m1=24,
         )
 
         self.decoder1 = UnetrUpBlock(
@@ -1230,7 +1237,7 @@ class SwinTransformer(nn.Module):
         )
 
         self.img_conv1 = Convolution(
-            dimension=3,
+            spatial_dims=3,
             in_channels=48,
             out_channels=48,
             strides=2,
@@ -1239,7 +1246,7 @@ class SwinTransformer(nn.Module):
         )
 
         self.img_conv2 = Convolution(
-            dimension=3,
+            spatial_dims=3,
             in_channels=48,
             out_channels=96,
             strides=2,
@@ -1248,7 +1255,7 @@ class SwinTransformer(nn.Module):
         )
 
         self.img_conv3 = Convolution(
-            dimension=3,
+            spatial_dims=3,
             in_channels=96,
             out_channels=192,
             strides=2,
@@ -1257,7 +1264,7 @@ class SwinTransformer(nn.Module):
         )
 
         self.img_conv4 = Convolution(
-            dimension=3,
+            spatial_dims=3,
             in_channels=192,
             out_channels=384,
             strides=2,

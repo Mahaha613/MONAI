@@ -169,7 +169,8 @@ def main():
                                                      'SwinUNETR_css_merging_skipV3_AddEncForX3', 'SwinUNETR_css_merging_skipV3_maxpoolskip',
                                                      'SwinUNETR_css_merging_skipV3_avgpoolskip','SwinUNETR_css_merging_skipV3_maxavgpoolskip',
                                                      'SwinUNETR_css_merging_skipV3_convskip', 'SwinUNETR_css_merging_skipV3_convskip_AddM0',
-                                                     'SwinUNETR_css_merging__imageconvInSkip', 'SwinUNETR_css_merging_imageconvMerging'], default="swin_unetr")
+                                                     'SwinUNETR_css_merging_imageconvInSkip', 'SwinUNETR_css_merging_imageconvMerging',
+                                                     'SwinUNETR_2_3MultiScaleMerging'], default="swin_unetr")
     paser.add_argument('--seed', default=42)
     paser.add_argument('--fig_save_name', default='css/train.png', help="name of saving fig")
     paser.add_argument('--lr', default=1e-4, type=float, help="start learning rate")

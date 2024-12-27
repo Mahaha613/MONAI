@@ -145,7 +145,7 @@ class SwinUNETR(nn.Module):
         if self.use_1x1_conv_for_skip:
             self.conv_1x1x1_m4 = Convolution(
                 spatial_dims=3,
-                in_channels=4*feature_size,
+                in_channels=12*feature_size,
                 out_channels=8*feature_size,
                 kernel_size=1,
                 strides=1,
@@ -154,7 +154,7 @@ class SwinUNETR(nn.Module):
             
             self.conv_1x1x1_m3 = Convolution(
                 spatial_dims=3,
-                in_channels=2*feature_size,
+                in_channels=6*feature_size,
                 out_channels=4*feature_size,
                 kernel_size=1,
                 strides=1,
@@ -163,7 +163,7 @@ class SwinUNETR(nn.Module):
             
             self.conv_1x1x1_m2 = Convolution(
                 spatial_dims=3,
-                in_channels=feature_size,
+                in_channels=3*feature_size,
                 out_channels=2*feature_size,
                 kernel_size=1,
                 strides=1,
@@ -172,7 +172,7 @@ class SwinUNETR(nn.Module):
 
         self.conv_1x1x1_m1 = Convolution(
             spatial_dims=3,
-            in_channels=feature_size,
+            in_channels=2*feature_size,
             out_channels=feature_size,
             kernel_size=1,
             strides=1,
@@ -449,7 +449,7 @@ class SwinUNETR(nn.Module):
             else:
                 enc2 = torch.cat([enc2, m2], dim=1)
 
-            # m1 = self.css_add_skip(enc0)  # no need to double the channels
+            
             m1 = img_conv_layer[-1]
             if self.use_1x1_conv_for_skip:
                 enc1 = self.conv_1x1x1_m1(torch.cat([enc1, m1], dim=1))

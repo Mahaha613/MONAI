@@ -10,7 +10,7 @@
 # limitations under the License.
 
 from __future__ import annotations
-
+import math
 import itertools
 from collections.abc import Sequence
 from typing import Final
@@ -42,6 +42,7 @@ __all__ = [
     "SwinTransformer",
 ]
 
+IMG_CONV_LIST = []
 
 class SwinUNETR(nn.Module):
     """
@@ -1000,8 +1001,9 @@ class PatchMerging(PatchMergingV2):
                 x_add = self.css_max_avg_pool(x, "maxavgpool")
                 x = torch.cat([x0, x1, x2, x3, x4, x5, x6, x7, x_add], -1)
             elif self.merging_type == "img_conv":
-                i = x.shape[-1] // 2
-                x = torch.cat([x0, x1, x2, x3, x4, x5, x6, x7, self.img_conv_layer[int(i)-1]], -1)
+                i = x.shape[-1] // 48
+                i = math.log(i) / math.log(2)
+                x = torch.cat([x0, x1, x2, x3, x4, x5, x6, x7, IMG_CONV_LIST[int(i)]], -1)
             else:
                 raise ValueError("merging_type must be one of 'conv', 'maxpool', 'avgpool', 'maxavgpool'.")
             x = self.norm_css(x)
@@ -1359,8 +1361,12 @@ class SwinTransformer(nn.Module):
         self.img_conv_layer2 = self.img_conv2(self.img_conv_layer1.contiguous())
         self.img_conv_layer3 = self.img_conv3(self.img_conv_layer2.contiguous())
         self.img_conv_layer4 = self.img_conv4(self.img_conv_layer3.contiguous())
-        self.img_conv_layer = [self.img_conv_layer1.contiguous(), self.img_conv_layer2.contiguous(), 
-                            self.img_conv_layer3.contiguous(), self.img_conv_layer4.contiguous(), x0_out.contiguous()]
+
+        IMG_CONV_LIST[:] = [torch.permute(self.img_conv_layer1.contiguous(), (0,2,3,4,1)), 
+                            torch.permute(self.img_conv_layer2.contiguous(), (0,2,3,4,1)),  
+                            torch.permute(self.img_conv_layer3.contiguous(), (0,2,3,4,1)), 
+                            torch.permute(self.img_conv_layer4.contiguous(), (0,2,3,4,1)),  
+                            torch.permute(x0_out.contiguous(), (0,2,3,4,1)), ]
 
         if self.use_v2:
             x0 = self.layers1c[0](x0.contiguous())

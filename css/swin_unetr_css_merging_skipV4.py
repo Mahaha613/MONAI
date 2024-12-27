@@ -953,11 +953,11 @@ class PatchMerging(PatchMergingV2):
                     # dropout=0.2      
                 ) 
         self.max_avg_pool = MaxAvgPool(
-                spatial_dims=3,              # 3D 池化
-                kernel_size=(2, 2, 2),       # 池化核大小
-                stride=(2, 2, 2),            # 步幅
-                padding=0                    # 无填充
-            )                                # 使用半精度浮点数.cuda().half()
+                spatial_dims=3,             
+                kernel_size=(2, 2, 2),       
+                stride=(2, 2, 2),            
+                padding=0                   
+            )                         
     def css_add_conv(self, x):
         x = torch.permute(x, (0, 4, 1, 2, 3))
         output_s = torch.permute(self.add_222conv(x), (0, 2, 3, 4, 1))

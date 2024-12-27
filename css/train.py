@@ -186,7 +186,7 @@ def main():
     paser.add_argument('--merging_type', choices=['maxpool', 'avgpool', 'maxavgpool', 'conv', 'img_conv'], default=None)
     paser.add_argument('--use_ln', action='store_true', help='if specify, use LayerNorm for conv-Merging, else use InstanceNorm, !!!now for ConvOnlyMerging!!!')
     paser.add_argument('--ref_weight', default=None, help='path of trained model')
-    
+     
     paser.add_argument('--css_skip', action='store_true', help='using css skip connection')
     paser.add_argument('--use_1x1_conv_for_skip', action='store_true', help='use 1x1 conv3d to change channel in skip connection')
     paser.add_argument('--use_css_skip_m4', action='store_true', help='using css skip connection m4')

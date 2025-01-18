@@ -933,9 +933,9 @@ class PatchMergingV2(nn.Module):
         self.dim = dim
         if spatial_dims == 3:
             self.reduction = nn.Linear(8 * dim, 2 * dim, bias=False)
-            self.reduction_css = nn.Linear(10 * dim, 2 * dim, bias=False)
+            self.reduction_css = nn.Linear(9 * dim, 2 * dim, bias=False)
             self.norm = norm_layer(8 * dim)
-            self.norm_css = norm_layer(10 * dim)
+            self.norm_css = norm_layer(9 * dim)
         elif spatial_dims == 2:
             self.reduction = nn.Linear(4 * dim, 2 * dim, bias=False)
             self.norm = norm_layer(4 * dim)
@@ -1021,10 +1021,12 @@ class PatchMerging(PatchMergingV2):
             )                                # 使用半精度浮点数.cuda().half()
     def css_add_conv(self, x):
         x = torch.permute(x, (0, 4, 1, 2, 3))
-        output_s = torch.permute(self.add_222conv(x), (0, 2, 3, 4, 1))
-        output_l = torch.permute(self.add_442conv(x), (0, 2, 3, 4, 1))
+        # output_s = torch.permute(self.add_222conv(x), (0, 2, 3, 4, 1))
+        # output_l = torch.permute(self.add_442conv(x), (0, 2, 3, 4, 1))
+        output = torch.permute(self.add_222conv(x), (0, 2, 3, 4, 1))
         # output = torch.permute(self.relu(self.add_222conv(x)), (0, 2, 3, 4, 1))
-        return torch.cat([output_s, output_l], -1)
+        # return torch.cat([output_s, output_l], -1)
+        return output
     def css_max_avg_pool(self, x, merging):
         x = torch.permute(x, (0, 4, 1, 2, 3))  # 重新排列为 (batch, channels, depth, height, width)
         shape_c = x.shape[1]

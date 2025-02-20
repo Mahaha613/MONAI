@@ -11,7 +11,7 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator, MultipleLocator
 from tqdm import tqdm
-
+import nibabel as nib
 def generate_data_list(img_path, label_path, save_path=''):
     img_list = glob.glob(f'{img_path}/*.nii.gz')
     label_list = glob.glob(f'{label_path}/*.nii.gz')
@@ -61,14 +61,14 @@ def get_data_info(data_path, save_path):
     # 绘制合并直方图
     plt.figure(figsize=(10, 6))
     plt.hist(all_pixel_values, bins='auto', color='blue', alpha=0.7)
-    plt.title("Combined Histogram for All Images")
+    plt.title("Pixel Distribution Histogram")
     plt.xlabel("Pixel Value")
     plt.ylabel("Frequency")
     # 使用MaxNLocator自动找到最佳的刻度位置
     ax = plt.gca()  # 获取当前轴
     ax.xaxis.set_major_locator(MaxNLocator(100))  # 设置x轴的主要刻度显示最多10个刻度
     plt.xticks(rotation=90)
-    plt.savefig(os.path.join(os.path.dirname(save_path), 'hist1_test.png'), dpi=300)
+    plt.savefig(os.path.join(os.path.dirname(save_path), 'process_hist_train.png'), dpi=300)
     plt.close()  # 关闭图像
     
     with open(save_path, 'w') as f:
@@ -105,6 +105,31 @@ def clip_norm_data(data_path, save_path):
     
 
 
+import os
+import numpy as np
+import nibabel as nib
+
+def count_cases_with_labels(data_folder, label_values):
+
+    label_presence = {label: 0 for label in label_values}
+    
+    # 遍历文件夹中的所有.nii或.nii.gz文件
+    for file_name in os.listdir(data_folder):
+        if file_name.endswith('.nii') or file_name.endswith('.nii.gz'):
+            file_path = os.path.join(data_folder, file_name)
+            img = nib.load(file_path)  # 加载NIfTI图像
+            data = img.get_fdata()     # 获取图像数据作为numpy数组
+            
+            # 检查当前文件是否包含任何需要统计的标签
+            for label in label_values:
+                if np.any(data == label):  # 如果该文件至少有一个像素属于此标签，则增加计数
+                    label_presence[label] += 1
+                
+    return label_presence
+
+
+
+
         
 
 
@@ -115,9 +140,16 @@ if __name__ == '__main__':
     #                     'BSHD_src_data/label/test',
     #                     'BSHD_src_data/test.json')
 
-    # get_data_info('BSHD_src_data/image/test', 'BSHD_src_data/test_data_info.json')
+    # get_data_info('BSHD_src_data/preprocessed_image/train', 'BSHD_src_data/test_data_info.json')
     # clip_norm_data(data_path='./BSHD_src_data/image/test',
                     # save_path='./BSHD_src_data/preprocessed_image/test')
+                    
+    # data_folder = 'BSHD_src_data/label/test'  # 替换为你的数据集目录
+    # label_values = [1., 2., 3., 4., 5.]  # 假设这五个数字是你五种前景标签的值
+    # presence_counts = count_cases_with_labels(data_folder, label_values)
+
+    # print("Cases with labels:", presence_counts)
+    
     pass
 
 

@@ -966,6 +966,7 @@ class PatchMerging(PatchMergingV2):
                 kernel_size=(2, 2, 2),       
                 padding=0,       
             )
+            
         else:
             print("using InstanceNorm")
             self.add_222conv = Convolution(
@@ -992,6 +993,8 @@ class PatchMerging(PatchMergingV2):
                 stride=(2, 2, 2),            # 步幅
                 padding=0                    # 无填充
             )                                # 使用半精度浮点数.cuda().half()
+        
+        
     def css_add_conv(self, x):
         x = torch.permute(x, (0, 4, 1, 2, 3))
         # output_s = torch.permute(self.add_222conv(x), (0, 2, 3, 4, 1))

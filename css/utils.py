@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 from scipy.stats import gaussian_kde
 from datetime import datetime
 from scipy import stats
+import shutil
 
 # 修正后的全局样式配置（仅使用官方支持的rcParams）
 STYLE_CONFIG = {
@@ -637,7 +638,85 @@ def pixel_value_distribution():
     plt.savefig(OUTPUT_NAME, bbox_inches='tight')
     print(f"\n结果已保存至 {OUTPUT_NAME}")
 
+def Alignment():
+    ref_data_path = 'BSHD_src_data/preprocessed_image/train/BHSD_image_000.nii.gz'
+    tar_data_path = 'BSHD_src_data/preprocessed_image/train/BHSD_image_020.nii.gz'
+    ref, tar = sitk.ReadImage(ref_data_path), sitk.ReadImage(tar_data_path)
+    ref_origin, ref_Orientation = ref.GetOrigin(), ref.GetDirection()
+    tar.SetOrigin(ref_origin)
+    tar.SetDirection(ref_Orientation)
+    sitk.WriteImage(tar, '/home/xiang/user/user_group/caoshangshang/RushBin/MONAI/BSHD_src_data/BHSD_image_020.nii.gz')
 
+
+def change_spacing():
+    # 输入和输出文件路径
+    input_path = 'BSHD_src_data/preprocessed_image/train/BHSD_image_000.nii.gz'    # 输入文件路径，替换为你的输入文件
+    output_path = '/home/xiang/user/user_group/caoshangshang/RushBin/MONAI/BSHD_src_data/BHSD_image_000.nii.gz' # 输出文件路径，替换为你的输出路径
+
+    # 读取图像
+    image = sitk.ReadImage(input_path)
+
+    # 获取原始图像的spacing和尺寸
+    original_spacing = image.GetSpacing()
+    original_size = image.GetSize()
+    print(f"Original Spacing: {original_spacing}")
+    print(f"Original Size: {original_size}")
+    # 设置目标spacing值（根据需求修改）
+    target_spacing = [original_spacing[0], original_spacing[1], 1.5]  # 示例：[x_spacing, y_spacing, z_spacing]
+
+    # 计算调整spacing后的新尺寸（保持物理空间范围一致）
+    new_size = [
+        int(round(os * (osp / tsp)))
+        for os, osp, tsp in zip(original_size, original_spacing, target_spacing)
+    ]
+
+    # 初始化ResampleImageFilter
+    resampler = sitk.ResampleImageFilter()
+    resampler.SetOutputSpacing(target_spacing)   # 设置目标spacing
+    resampler.SetSize(new_size)                  # 设置新尺寸
+    resampler.SetOutputDirection(image.GetDirection())  # 保持方向不变
+    resampler.SetOutputOrigin(image.GetOrigin())        # 保持原点不变
+
+    # 设置插值方法（根据数据类型选择）
+    # sitk.sitkLinear - 适合连续数据（如CT/MRI）
+    # sitk.sitkNearestNeighbor - 适合离散标签（如分割结果）
+    resampler.SetInterpolator(sitk.sitkLinear)
+
+    # 执行重采样
+    resampled_image = resampler.Execute(image)
+
+    # 保存结果
+    sitk.WriteImage(resampled_image, output_path)
+
+    # 验证输出参数
+    print(f"New Spacing: {resampled_image.GetSpacing()}")
+    print(f"New Size: {resampled_image.GetSize()}")
+
+
+def get_label_with_EDH_scan():
+    # ['097' '117' '119' '122' '124' '133' '136' '144' '149' '153' '163' '186' '190']
+    path = 'BSHD_src_data/test_slice/test_slice_1'
+    scan_list = []
+    for img in tqdm(glob.glob(path+'/*.png')):
+        scan_list.append(img.split('.')[0].split('_')[-1])
+    scan_list = np.unique(scan_list)
+    print(scan_list)
+
+
+def mv_log2file():
+    log_list = glob.glob('css/*.log')
+    file_list = os.listdir('css/experiment/swim_unetr')
+    file_dirname = 'css/experiment/swim_unetr/'
+    if len(log_list) == 0:
+        print('no log file')
+        exit()
+    for log in log_list:
+        log_name = os.path.basename(log).split('.')[0]
+        if log_name in file_list:
+            try:
+                shutil.move(log, file_dirname+f'{log_name}')
+            except:
+                print(f'{log_name} move failed')
 
 if __name__ == '__main__':
     # generate_data_list('BSHD_src_data/image/test',
@@ -666,7 +745,11 @@ if __name__ == '__main__':
     # plot_total_distribution()
     # cauculate_foreground_ratio_with_label()
     # get_data_min_max(data_path='BSHD_src_data/preprocessed_image/test')
-    pixel_value_distribution()
+    # pixel_value_distribution()
+    # Alignment()
+    # change_spacing()
+    # get_label_with_EDH_scan()
+    mv_log2file()
     pass
 
 

@@ -27,8 +27,100 @@ import torch
 from monai.utils import set_determinism
 from css.bhsd_dataset import generate_data
 from css.bhsd_model import css_model
+import re
 
+def visualize_class_slices(model, val_loader, args, output_dir="./vis_results", target_class=1):
+    """
+    自动生成包含目标类别的真实标签切片可视化
+    参数:
+        target_class: 需要可视化的目标类别（例如1）
+        output_dir: 可视化结果保存路径
+    """
+    # 初始化后处理
+    post_pred = AsDiscrete(argmax=True, to_onehot=6)
+    post_label = AsDiscrete(to_onehot=6)
 
+    # 创建输出目录
+    os.makedirs(output_dir, exist_ok=True)
+    # 使用tqdm显示进度
+    pbar = tqdm(val_loader, desc="Visualizing", unit="batch")
+    model.eval()
+    
+    with torch.no_grad():
+        for batch_idx, batch in enumerate(pbar):
+            # 数据准备
+            inputs = batch["image"].to(args.device)
+            labels = batch["label"].to(args.device)
+            
+            labels_convert = [post_label(t) for t in decollate_batch(labels)]
+            trage_channel_data = labels_convert[0][target_class]
+            if not trage_channel_data.any():
+                continue
+            # 模型推理
+            outputs = sliding_window_inference(inputs, args.ref_window, 2, model)
+            
+            # 后处理
+            outputs_convert = [post_pred(t) for t in decollate_batch(outputs)]
+            
+            # 遍历当前批次样本
+            for sample_idx in range(inputs.shape[0]):
+                process_sample(
+                    sample_idx=sample_idx,
+                    batch_idx=batch_idx,
+                    ct_volume=inputs[sample_idx].cpu().numpy()[0],  # 去除批次和通道维度剩下（w,h,d）
+                    true_mask=labels_convert[sample_idx][target_class].cpu().numpy(),
+                    pred_mask=outputs_convert[sample_idx][target_class].cpu().numpy(),
+                    output_dir=output_dir
+                )
+
+def process_sample(sample_idx, batch_idx, ct_volume, true_mask, pred_mask, output_dir):
+    """处理单个样本的可视化"""
+    # 生成唯一标识符
+    sample_id = f"batch{batch_idx}_sample{sample_idx}"
+    
+    # 遍历所有轴向切片
+    for z in range(true_mask.shape[-1]):
+        # 仅处理存在真实标签的切片
+        if np.any(true_mask[:, :, z]):
+            plot_comparison(
+                ct_slice=ct_volume[:, :, z],
+                true_slice=true_mask[:, :, z],
+                pred_slice=pred_mask[:, :, z],
+                save_path=os.path.join(output_dir, f"{sample_id}_z{z:03d}.png")
+            )
+
+def plot_comparison(ct_slice, true_slice, pred_slice, save_path):
+    """绘制并保存对比图"""
+    plt.figure(figsize=(18, 6))
+    
+    # 原始CT
+    plt.subplot(1, 3, 1)
+    plt.imshow(ct_slice, cmap='gray')
+    plt.title('Original CT')
+    plt.axis('off')
+    
+    # 真实标签叠加
+    plt.subplot(1, 3, 2)
+    plt.imshow(ct_slice, cmap='gray')
+    plt.imshow(true_slice, alpha=0.4, cmap='Greens')
+    plt.title('Ground Truth')
+    plt.axis('off')
+    
+    # 预测结果叠加
+    plt.subplot(1, 3, 3)
+    plt.imshow(ct_slice, cmap='gray')
+    plt.imshow(pred_slice, alpha=0.4, cmap='Reds')
+    plt.title(f'Prediction\nDice: {calculate_slice_dice(true_slice, pred_slice):.2f}')
+    plt.axis('off')
+    
+    # 保存图像
+    plt.savefig(save_path, bbox_inches='tight', dpi=600)
+    plt.close()
+
+def calculate_slice_dice(true, pred):
+    """计算单切片Dice分数"""
+    intersection = np.sum(pred * true)
+    return (2. * intersection) / (np.sum(pred) + np.sum(true) + 1e-7)
 def train(train_loader, val_loader, args, writer):
     torch.backends.cudnn.benchmark = True
     model = css_model(args)
@@ -94,7 +186,7 @@ def train(train_loader, val_loader, args, writer):
 # ******************************************train*************************************************************
 
 
-def validation(model, val_loader, epoch_idx, args):
+def validation(model, val_loader, epoch_idx, args, target_ids=None):
     model.eval()
     post_label = AsDiscrete(to_onehot=6)
     post_pred = AsDiscrete(argmax=True, to_onehot=6)
@@ -194,6 +286,7 @@ def main():
     paser.add_argument('--use_dec_change_C_in_css_skip', action='store_true', help='when using css skip connection and not using 1x1_conv_for_skip, this parameter need to be used')
     paser.add_argument('--use_css_skip_m1V2', action='store_true', help='using css skip connection m1v2')
     paser.add_argument('--device', type=str, default="2", help='using gpu device for train')
+    paser.add_argument('--drawOnly', action='store_true', help='draw segment result fig only')
 
     args = paser.parse_args()
     os.environ['CUDA_VISIBLE_DEVICES'] = args.device
@@ -209,6 +302,7 @@ def main():
     args.name_list = name_list
     # set_determinism(seed=args.seed)
     print(args)
+
     if args.test:
         val_loader = generate_data(args)
     else:
@@ -226,9 +320,19 @@ def main():
         writer.add_text
     else:
         model = css_model(args)
-        mean_dice_val_include_bg, mean_dice_val_without_bg, dice_values = validation(model, val_loader, 0, args)
-        print(f"mean_dice_val_include_bg: {mean_dice_val_include_bg:.5f}, mean_dice_val_without_bg: {mean_dice_val_without_bg:.5f}, dice_values: {dice_values}")
+        if args.drawOnly:
+            visualize_class_slices(
+                    model=model,
+                    val_loader=val_loader,
+                    args=args,
+                    target_class=1,  # 可视化类别1的标签
+                    output_dir="BSHD_src_data/draw_ref_res"
+                )
+        else:
+            mean_dice_val_include_bg, mean_dice_val_without_bg, dice_values = validation(model, val_loader, 0, args)
+            print(f"mean_dice_val_include_bg: {mean_dice_val_include_bg:.5f}, mean_dice_val_without_bg: {mean_dice_val_without_bg:.5f}, dice_values: {dice_values}")
 
 
 if __name__ == '__main__':
         main()
+    

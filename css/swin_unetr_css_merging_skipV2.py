@@ -138,6 +138,14 @@ class SwinUNETR(nn.Module):
                 kernel_size=(2,2,2),
                 padding=0,
                 )
+            self.conv_1x1x1_m1 = Convolution(
+            spatial_dims=3,
+            in_channels=feature_size,
+            out_channels=feature_size,
+            kernel_size=1,
+            strides=1,
+            padding=0
+            )
         if self.use_1x1_conv_for_skip:
             self.conv_1x1x1_m4 = Convolution(
                 spatial_dims=3,
@@ -166,14 +174,7 @@ class SwinUNETR(nn.Module):
                 padding=0
                 )
 
-        self.conv_1x1x1_m1 = Convolution(
-            spatial_dims=3,
-            in_channels=feature_size,
-            out_channels=feature_size,
-            kernel_size=1,
-            strides=1,
-            padding=0
-            )
+        
 # *******************************************************************
 
         if spatial_dims not in (2, 3):

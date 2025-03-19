@@ -113,6 +113,7 @@ def test_split(path='/home/amax/css/data/BHSD/data_for_Swin_UNETR/image/test'):
         json.dump(split_data, f, indent=4)
 
 
+
 if __name__ == '__main__':
     # get_data(img_path='/home/amax/css/data/BHSD/3d_data_spacing_1_1_1/labels/train',
     #          save_path='/home/amax/css/data/BHSD/data_for_Swin_UNETR/label/train')

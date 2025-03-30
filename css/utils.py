@@ -17,6 +17,7 @@ from scipy.stats import gaussian_kde
 from datetime import datetime
 from scipy import stats
 import shutil
+from graphviz import Digraph
 
 # 修正后的全局样式配置（仅使用官方支持的rcParams）
 STYLE_CONFIG = {
@@ -702,6 +703,97 @@ def get_label_with_EDH_scan():
     scan_list = np.unique(scan_list)
     print(scan_list)
 
+def create_workflow():
+    # ch4
+    # dot = Digraph(format='svg')
+    # dot.attr(rankdir='TB', 
+    #         fontname='Microsoft YaHei', 
+    #         dpi='300',
+    #         penwidth='0.8',
+    #         edge_arrowsize='0.8',   # 全局箭头大小
+    #         edge_color='#666666')   # 全局边颜色
+
+    # # 全局节点样式
+    # dot.attr('node', shape='box', 
+    #         style='solid', 
+    #         color='black', 
+    #         fontsize='14',
+    #         fontcolor='#333333',
+    #         margin='0.25,0.15')
+
+    # # 节点定义
+    # dot.node('A', '小微出血区域分割困难')
+    # dot.node('B1', '类别不均衡（小样本）', width='2.2')
+    # dot.node('B2', '小微出血特征丢失', width='2.2')
+    # dot.node('B3', '下采样空间信息损失', width='2.2')
+
+    # # 解决方案模块（无边框）
+    # with dot.subgraph(name='cluster_solution') as sub1:
+    #     sub1.attr(label='', color='invis')
+    #     sub1.node('C1', '双支路特征增强\n• Transformer全局建模\n• 3D卷积局部增强', fontsize='13')
+
+    # # 实验结果模块
+    # with dot.subgraph(name='cluster_result') as sub2:
+    #     sub2.attr(label='', color='invis')
+    #     sub2.node('D1', '平均Dice系数：35.23%（+5.79）', fontsize='13')
+
+    # # 添加边（无需额外参数）
+    # dot.edges([  
+    #     ('A', 'B1'), ('A', 'B2'), ('A', 'B3'),  
+    #     ('B1', 'C1'), ('B2', 'C1'), ('B3', 'C1'),
+    #     ('C1', 'D1')  
+    # ])
+
+    # return dot
+
+    # ch6
+    dot = Digraph(format='svg')
+    dot.attr(rankdir='TB',
+             fontname='Microsoft YaHei',
+             dpi='600',
+             penwidth='0.8',
+             edge_arrowsize='0.8',
+             edge_color='#666666')
+
+    # 全局节点样式
+    dot.attr('node', shape='box',
+             style='solid',
+             color='black',
+             fontsize='14',
+             fontcolor='#333333',
+             margin='0.25,0.15')
+
+    # 核心问题节点
+    dot.node('P', '颅内出血分割挑战')
+
+    # 挑战子节点
+    dot.node('C1', '小微出血区域分割困难', width='2.5')
+    dot.node('C2', '多尺度出血建模困难', width='2.5')
+
+    # 解决方案模块
+    with dot.subgraph(name='cluster_solution') as sub:
+        sub.attr(color='invis', labelloc='t')
+        sub.node('S', 'ALS UNETR复合架构\n'
+                      '▶ AFE-Merging\n   • 双支路特征融合\n   • 局部-全局特征互补\n'
+                      '▶ LFG-Skip\n   • 跨层级动态引导\n   • 多尺度语义聚合', 
+                 width='3.2',
+                 fontsize='13')
+
+    # 实验结果模块
+    with dot.subgraph(name='cluster_result') as sub:
+        sub.attr(color='invis')
+        sub.node('R', '平均Dice:34.90(+5.46%)',
+                 width='2.8',
+                 fontsize='13')
+
+    # 逻辑连接
+    dot.edges([
+        ('P', 'C1'), ('P', 'C2'),
+        ('C1', 'S'), ('C2', 'S'),
+        ('S', 'R')
+    ])
+    
+    return dot
 
 def mv_log2file():
     log_list = glob.glob('css/*.log')
@@ -749,7 +841,9 @@ if __name__ == '__main__':
     # Alignment()
     # change_spacing()
     # get_label_with_EDH_scan()
-    mv_log2file()
+    # mv_log2file()
+    # workflow = create_workflow()
+    # workflow.render('css/chap6_final',  format='svg')
     pass
 
 

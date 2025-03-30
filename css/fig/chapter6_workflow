@@ -1,0 +1,32 @@
+digraph {
+	dpi=600 edge_arrowsize=0.8 edge_color="#666666" fontname="Microsoft YaHei" penwidth=0.8 rankdir=TB
+	node [color=black fontcolor="#333333" fontsize=14 margin="0.25,0.15" shape=box style=solid]
+	P [label="颅内出血分割双模态挑战"]
+	C1 [label="特征表达不足
+• 小样本亚型(EDH仅6.2%)
+• 小微出血占比81%" width=2.5]
+	C2 [label="多尺度建模困难
+• 亚型体积差异达3个数量级
+• 形态复杂性高" width=2.5]
+	subgraph cluster_solution {
+		color=invis labelloc=t
+		S [label="ALS UNETR复合架构
+▶ AFE-Merging编码器
+   - 双支路特征融合
+   - 局部-全局特征互补
+▶ LFG-Skip解码器
+   - 跨层级动态引导
+   - 多尺度语义聚合" fontsize=13 width=3.2]
+	}
+	subgraph cluster_result {
+		color=invis
+		R [label="综合性能提升
+• 平均Dice:0.824(+18.9%)
+• SAH亚型Dice:0.712(+23.6%)" fontsize=13 width=2.8]
+	}
+	P -> C1
+	P -> C2
+	C1 -> S
+	C2 -> S
+	S -> R
+}

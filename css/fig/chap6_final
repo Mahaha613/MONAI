@@ -1,0 +1,26 @@
+digraph {
+	dpi=600 edge_arrowsize=0.8 edge_color="#666666" fontname="Microsoft YaHei" penwidth=0.8 rankdir=TB
+	node [color=black fontcolor="#333333" fontsize=14 margin="0.25,0.15" shape=box style=solid]
+	P [label="颅内出血分割挑战"]
+	C1 [label="小微出血区域分割困难" width=2.5]
+	C2 [label="多尺度出血建模困难" width=2.5]
+	subgraph cluster_solution {
+		color=invis labelloc=t
+		S [label="ALS UNETR复合架构
+▶ AFE-Merging
+   • 双支路特征融合
+   • 局部-全局特征互补
+▶ LFG-Skip
+   • 跨层级动态引导
+   • 多尺度语义聚合" fontsize=13 width=3.2]
+	}
+	subgraph cluster_result {
+		color=invis
+		R [label="平均Dice:34.90(+5.46%)" fontsize=13 width=2.8]
+	}
+	P -> C1
+	P -> C2
+	C1 -> S
+	C2 -> S
+	S -> R
+}

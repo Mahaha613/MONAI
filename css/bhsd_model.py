@@ -1,4 +1,4 @@
-# from monai.networks.nets import SwinUNETR
+from monai.networks.nets import SwinUNETR as src_model
 # from css.swin_unetr_css_merging import SwinUNETR
 from css.swin_unetr_css_merging_skip import SwinUNETR as SwinUNETR
 from css.swin_unetr_css_merging_skipV2 import SwinUNETR as SwinUNETR_css_merging
@@ -18,7 +18,27 @@ import torch
 import os
 import json
 def css_model(args):
-    if args.model == 'swin_unetr':
+    if args.model == 'src_model':
+        # ******************************************Create Swin UNETR model*******************************************
+        print("Using src_swin_unetr!")
+        model = src_model(
+            img_size=args.ref_window,
+            in_channels=1,
+            out_channels=6,
+            feature_size=48,
+            use_checkpoint=True
+        ).to(args.device)
+        if args.test:
+            assert os.path.isfile(args.ref_weight), "weight path is not a file"
+            print(f"weight_path: {args.ref_weight}")
+            model.load_state_dict(torch.load(args.ref_weight))
+            return model
+        weight = torch.load("css/model_swinvit.pt")
+        model.load_from(weights=weight)
+        print("Using pretrained self-supervied Swin UNETR backbone weights !")
+        return model
+    
+    elif args.model == 'swin_unetr':
         # ******************************************Create Swin UNETR model*******************************************
         print("Using swin_unetr!")
         model = SwinUNETR(

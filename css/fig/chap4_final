@@ -1,0 +1,25 @@
+digraph {
+	dpi=300 edge_arrowsize=0.8 edge_color="#666666" fontname="Microsoft YaHei" penwidth=0.8 rankdir=TB
+	node [color=black fontcolor="#333333" fontsize=14 margin="0.25,0.15" shape=box style=solid]
+	A [label="小微出血区域分割困难"]
+	B1 [label="类别不均衡（小样本）" width=2.2]
+	B2 [label="小微出血特征丢失" width=2.2]
+	B3 [label="下采样空间信息损失" width=2.2]
+	subgraph cluster_solution {
+		color=invis label=""
+		C1 [label="双支路特征增强
+• Transformer全局建模
+• 3D卷积局部增强" fontsize=13]
+	}
+	subgraph cluster_result {
+		color=invis label=""
+		D1 [label="平均Dice系数：35.23%（+5.79）" fontsize=13]
+	}
+	A -> B1
+	A -> B2
+	A -> B3
+	B1 -> C1
+	B2 -> C1
+	B3 -> C1
+	C1 -> D1
+}

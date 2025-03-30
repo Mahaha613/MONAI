@@ -1,0 +1,22 @@
+digraph {
+	dpi=600 edge_arrowsize=0.8 edge_color="#666666" fontname="Microsoft YaHei" penwidth=0.8 rankdir=TB
+	node [color=black fontcolor="#333333" fontsize=14 margin="0.25,0.15" shape=box style=solid]
+	P [label="多尺度分割挑战"]
+	C1 [label="5种亚型出血体积差异较大" width=2.2]
+	C3 [label="单层级特征传递(高分辨率特征丢失)" width=2.2]
+	subgraph cluster_solution {
+		color=invis labelloc=t
+		S [label="LFG-Skip跨层融合机制
+• 3D卷积跨层压缩
+• 动态融合" fontsize=13]
+	}
+	subgraph cluster_result {
+		color=invis
+		R [label="平均Dice系数:34.76%(+5.32%)" fontsize=13]
+	}
+	P -> C1
+	P -> C3
+	C1 -> S
+	C3 -> S
+	S -> R
+}

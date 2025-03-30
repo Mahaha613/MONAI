@@ -31,12 +31,14 @@ import re
 
 
 
-def visualize_class_slices(model, val_loader, args, output_dir="./vis_results", target_class=1):
+def visualize_class_slices(model, val_loader, args, output_dir="", 
+                           target_class=1, dice_threshold=0.7):
     """
-    自动生成包含目标类别的真实标签切片可视化
+    自动生成包含目标类别的真实标签切片可视化（仅保存Dice高于阈值的切片）
     参数:
         target_class: 需要可视化的目标类别（例如1）
         output_dir: 可视化结果保存路径
+        dice_threshold: Dice系数阈值（0-1），默认0.5
     """
     # 初始化后处理
     post_pred = AsDiscrete(argmax=True, to_onehot=6)
@@ -72,11 +74,12 @@ def visualize_class_slices(model, val_loader, args, output_dir="./vis_results", 
                     ct_volume=inputs[sample_idx].cpu().numpy()[0],  # 去除批次和通道维度剩下（w,h,d）
                     true_mask=labels_convert[sample_idx][target_class].cpu().numpy(),
                     pred_mask=outputs_convert[sample_idx][target_class].cpu().numpy(),
-                    output_dir=output_dir
+                    output_dir=output_dir,
+                    dice_threshold=dice_threshold
                 )
 
-def process_sample(sample_idx, batch_idx, ct_volume, true_mask, pred_mask, output_dir):
-    """处理单个样本的可视化"""
+def process_sample(sample_idx, batch_idx, ct_volume, true_mask, pred_mask, output_dir, dice_threshold):
+    """处理单个样本的可视化（仅保存Dice高于阈值的切片）"""
     # 生成唯一标识符
     sample_id = f"batch{batch_idx}_sample{sample_idx}"
     
@@ -84,14 +87,23 @@ def process_sample(sample_idx, batch_idx, ct_volume, true_mask, pred_mask, outpu
     for z in range(true_mask.shape[-1]):
         # 仅处理存在真实标签的切片
         if np.any(true_mask[:, :, z]):
-            plot_comparison(
-                ct_slice=ct_volume[:, :, z],
-                true_slice=true_mask[:, :, z],
-                pred_slice=pred_mask[:, :, z],
-                save_path=os.path.join(output_dir, f"{sample_id}_z{z:03d}.png")
-            )
+            true_slice = true_mask[:, :, z]
+            pred_slice = pred_mask[:, :, z]
+            
+            # 计算Dice系数
+            dice_score = calculate_slice_dice(true_slice, pred_slice)
+            
+            # 仅保存高于阈值的切片
+            if dice_score >= dice_threshold:
+                plot_comparison(
+                    ct_slice=ct_volume[:, :, z],
+                    true_slice=true_slice,
+                    pred_slice=pred_slice,
+                    save_path=os.path.join(output_dir, f"{sample_id}_z{z:03d}.png"),
+                    dice_score=dice_score
+                )
 
-def plot_comparison(ct_slice, true_slice, pred_slice, save_path):
+def plot_comparison(ct_slice, true_slice, pred_slice, save_path, dice_score):
     """绘制并保存对比图"""
     plt.figure(figsize=(18, 6))
     
@@ -112,17 +124,21 @@ def plot_comparison(ct_slice, true_slice, pred_slice, save_path):
     plt.subplot(1, 3, 3)
     plt.imshow(ct_slice, cmap='gray')
     plt.imshow(pred_slice, alpha=0.4, cmap='Reds')
-    plt.title(f'Prediction\nDice: {calculate_slice_dice(true_slice, pred_slice):.2f}')
+    plt.title(f'Prediction\nDice: {dice_score:.2f}')
     plt.axis('off')
     
     # 保存图像
     plt.savefig(save_path, bbox_inches='tight', dpi=600)
     plt.close()
 
-def calculate_slice_dice(true, pred):
-    """计算单切片Dice分数"""
-    intersection = np.sum(pred * true)
-    return (2. * intersection) / (np.sum(pred) + np.sum(true) + 1e-7)
+def calculate_slice_dice(true_slice, pred_slice):
+    """计算单个切片的Dice系数"""
+    intersection = np.logical_and(true_slice, pred_slice)
+    sum_ = true_slice.sum() + pred_slice.sum()
+    
+    if sum_ == 0:
+        return 1.0  # 处理全零情况
+    return 2.0 * intersection.sum() / sum_
 def train(train_loader, val_loader, args, writer):
     torch.backends.cudnn.benchmark = True
     model = css_model(args)
@@ -288,7 +304,11 @@ def main():
     paser.add_argument('--use_dec_change_C_in_css_skip', action='store_true', help='when using css skip connection and not using 1x1_conv_for_skip, this parameter need to be used')
     paser.add_argument('--use_css_skip_m1V2', action='store_true', help='using css skip connection m1v2')
     paser.add_argument('--device', type=str, default="2", help='using gpu device for train')
+    # paser for draw fig
     paser.add_argument('--drawOnly', action='store_true', help='draw segment result fig only')
+    paser.add_argument('--target_class', type=int, default=4, help='target class for plt')
+    paser.add_argument('--draw_dir', default='BSHD_src_data/draw_ref_res/merging/css/4')
+    paser.add_argument('--dice_threshold', type=float, default=0.7, help='dice threshold for draw fig')
 
     args = paser.parse_args()
     os.environ['CUDA_VISIBLE_DEVICES'] = args.device
@@ -327,8 +347,9 @@ def main():
                     model=model,
                     val_loader=val_loader,
                     args=args,
-                    target_class=1,  # 可视化类别1的标签
-                    output_dir="BSHD_src_data/draw_ref_res"
+                    target_class=args.target_class,  # 可视化类别1的标签
+                    output_dir=args.draw_dir,
+                    dice_threshold=args.dice_threshold
                 )
         else:
             mean_dice_val_include_bg, mean_dice_val_without_bg, dice_values = validation(model, val_loader, 0, args)

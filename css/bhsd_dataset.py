@@ -254,7 +254,7 @@ def get_transforms(trans, device, spacing, spatial_size, is_train=True):
 def generate_data(args):
     if args.test:
         val_files = generate_data_list(os.path.join(args.data_path, 'test'),
-                                'BSHD_src_data/label/test')
+                                os.path.join(args.label_path, 'test'))
         val_ds = CacheDataset(
         data=val_files, 
         transform=get_transforms(args.transforms, args.device, spacing=args.spacing, spatial_size=args.ref_window, is_train=False), 
@@ -271,9 +271,9 @@ def generate_data(args):
         return val_loader
     
     datalist = generate_data_list(os.path.join(args.data_path, 'train'),
-                                'BSHD_src_data/label/train')
+                                os.path.join(args.label_path, 'train'))
     val_files = generate_data_list(os.path.join(args.data_path, 'test'),
-                                'BSHD_src_data/label/test')
+                                os.path.join(args.label_path, 'test'))
 
     train_ds = CacheDataset(
         data=datalist,

@@ -113,10 +113,10 @@ def train(train_loader, val_loader, args, writer, model):
 
 def validation(model, val_loader, epoch_idx, args):
     model.eval()
-    post_label = AsDiscrete(to_onehot=6)
-    post_pred = AsDiscrete(argmax=True, to_onehot=6)
-    dice_metric = DiceMetric(include_background=True, reduction="mean", get_not_nans=False, num_classes=6)
-    classwise_dice = DiceMetric(include_background=True, reduction='none', get_not_nans=False, num_classes=6)
+    post_label = AsDiscrete(to_onehot=args.num_class)
+    post_pred = AsDiscrete(argmax=True, to_onehot=args.num_class)
+    dice_metric = DiceMetric(include_background=True, reduction="mean", get_not_nans=False, num_classes=args.num_class)
+    classwise_dice = DiceMetric(include_background=True, reduction='none', get_not_nans=False, num_classes=args.num_class)
     epoch_iterator_val = tqdm(val_loader, desc="Validate (X / X Steps) (dice=X.X)", dynamic_ncols=True) if args.local_rank == 0 else val_loader
 
     with torch.no_grad():

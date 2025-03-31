@@ -24,7 +24,7 @@ def css_model(args):
         model = src_model(
             img_size=args.ref_window,
             in_channels=1,
-            out_channels=6,
+            out_channels=args.num_class,
             feature_size=48,
             use_checkpoint=True
         ).to(args.device)
@@ -44,7 +44,7 @@ def css_model(args):
         model = SwinUNETR(
             img_size=args.ref_window,
             in_channels=1,
-            out_channels=6,
+            out_channels=args.num_class,
             feature_size=48,
             use_checkpoint=True,
             # use_v2=True,
@@ -71,7 +71,7 @@ def css_model(args):
         model = SwinUNETR_css_merging(
             img_size=args.ref_window,
             in_channels=1,
-            out_channels=6,
+            out_channels=args.num_class,
             feature_size=48,
             use_checkpoint=True,
             use_ln = args.use_ln,
@@ -98,7 +98,7 @@ def css_model(args):
         model = SwinUNETR_css_MultiScaleMerging(
             img_size=args.ref_window,
             in_channels=1,
-            out_channels=6,
+            out_channels=args.num_class,
             feature_size=48,
             use_checkpoint=True,
             use_ln = args.use_ln,
@@ -125,7 +125,7 @@ def css_model(args):
         model = SwinUNETR_css_merging_skipV3_AddEncForX3(
             img_size=args.ref_window,
             in_channels=1,
-            out_channels=6,
+            out_channels=args.num_class,
             feature_size=48,
             use_checkpoint=True,
             use_ln = args.use_ln,
@@ -152,7 +152,7 @@ def css_model(args):
         model = SwinUNETR_css_merging_skipV3_maxpoolskip(
             img_size=args.ref_window,
             in_channels=1,
-            out_channels=6,
+            out_channels=args.num_class,
             feature_size=48,
             use_checkpoint=True,
             use_ln = args.use_ln,
@@ -180,7 +180,7 @@ def css_model(args):
         model = SwinUNETR_css_merging_skipV3_avgpoolskip(
             img_size=args.ref_window,
             in_channels=1,
-            out_channels=6,
+            out_channels=args.num_class,
             feature_size=48,
             use_checkpoint=True,
             use_ln = args.use_ln,
@@ -208,7 +208,7 @@ def css_model(args):
         model = SwinUNETR_css_merging_skipV3_maxavgpoolskip(
             img_size=args.ref_window,
             in_channels=1,
-            out_channels=6,
+            out_channels=args.num_class,
             feature_size=48,
             use_checkpoint=True,
             use_ln = args.use_ln,
@@ -236,7 +236,7 @@ def css_model(args):
         model = SwinUNETR_css_merging_skipV3_convskip(
             img_size=args.ref_window,
             in_channels=1,
-            out_channels=6,
+            out_channels=args.num_class,
             feature_size=48,
             use_checkpoint=True,
             use_ln = args.use_ln,
@@ -264,7 +264,7 @@ def css_model(args):
         model = SwinUNETR_css_merging_skipV3_convskip_AddM0(
             img_size=args.ref_window,
             in_channels=1,
-            out_channels=6,
+            out_channels=args.num_class,
             feature_size=48,
             use_checkpoint=True,
             use_ln = args.use_ln,
@@ -292,7 +292,7 @@ def css_model(args):
         model = SwinUNETR_css_merging_imageconvMerging(
             img_size=args.ref_window,
             in_channels=1,
-            out_channels=6,
+            out_channels=args.num_class,
             feature_size=48,
             use_checkpoint=True,
             use_ln = args.use_ln,
@@ -320,7 +320,7 @@ def css_model(args):
         model = SwinUNETR_css_merging_imageconvInSkip(
             img_size=args.ref_window,
             in_channels=1,
-            out_channels=6,
+            out_channels=args.num_class,
             feature_size=48,
             use_checkpoint=True,
             use_ln = args.use_ln,
@@ -349,7 +349,7 @@ def css_model(args):
         model = SwinUNETR_2_3MultiScaleMerging(
             img_size=args.ref_window,
             in_channels=1,
-            out_channels=6,
+            out_channels=args.num_class,
             feature_size=48,
             use_checkpoint=True,
             use_ln = args.use_ln,
@@ -377,7 +377,7 @@ def css_model(args):
         model = SwinUNETR_css_merging_imageconvInSkip_add(
             img_size=args.ref_window,
             in_channels=1,
-            out_channels=6,
+            out_channels=args.num_class,
             feature_size=48,
             use_checkpoint=True,
             use_ln = args.use_ln,
@@ -405,7 +405,7 @@ def css_model(args):
         model = SwinUNETR_css_merging_skipV4_imageconvMerging_add(
             img_size=args.ref_window,
             in_channels=1,
-            out_channels=6,
+            out_channels=args.num_class,
             feature_size=48,
             use_checkpoint=True,
             use_ln = args.use_ln,

@@ -810,6 +810,54 @@ def mv_log2file():
             except:
                 print(f'{log_name} move failed')
 
+
+def batch_remap_labels(input_dir, output_dir, label_mapping):
+    """
+    批量处理目录中的NIfTI文件
+    
+    参数：
+    input_dir (str): 输入目录路径
+    output_dir (str): 输出目录路径
+    label_mapping (dict): 标签映射字典
+    """
+    # 创建输出目录
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # 获取所有NIfTI文件
+    nii_files = [f for f in os.listdir(input_dir) 
+                if f.endswith(('.nii', '.nii.gz'))]
+    
+    for file_name in nii_files:
+        # 构建完整路径
+        input_path = os.path.join(input_dir, file_name)
+        
+        # 生成输出文件名（保留原始名称）
+        base_name = os.path.basename(file_name).split('.nii')[0]
+        output_name = f"{base_name}.nii.gz"  # 统一保存为.nii.gz
+        output_path = os.path.join(output_dir, output_name)
+        
+        # 处理单个文件
+        process_single_file(input_path, output_path, label_mapping)
+        
+        print(f"处理完成：{file_name} -> {output_name}")
+
+def process_single_file(input_path, output_path, label_mapping):
+    """ 处理单个文件 """
+    try:
+        img = sitk.ReadImage(input_path)
+        arr = sitk.GetArrayFromImage(img)
+        
+        new_arr = np.zeros_like(arr)
+        for old_label, new_label in label_mapping.items():
+            new_arr[arr == old_label] = new_label
+            
+        new_img = sitk.GetImageFromArray(new_arr)
+        new_img.CopyInformation(img)
+        
+        sitk.WriteImage(new_img, output_path)
+    except Exception as e:
+        print(f"处理 {input_path} 时出错：{str(e)}")
+
 if __name__ == '__main__':
     # generate_data_list('BSHD_src_data/image/test',
     #                     'BSHD_src_data/label/test',
@@ -844,6 +892,11 @@ if __name__ == '__main__':
     # mv_log2file()
     # workflow = create_workflow()
     # workflow.render('css/chap6_final',  format='svg')
+    batch_remap_labels(
+        input_dir="BSHD_src_data/label/train",
+        output_dir="BSHD_src_data/1class_label/train",
+        label_mapping={1: 1, 2: 1, 3: 1, 4: 1, 5: 1},  # 示例映射：原2→1，原3→2
+    )
     pass
 
 

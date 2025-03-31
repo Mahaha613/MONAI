@@ -39,8 +39,8 @@ def visualize_class_slices(model, val_loader, args, output_dir="./vis_results", 
         output_dir: 可视化结果保存路径
     """
     # 初始化后处理
-    post_pred = AsDiscrete(argmax=True, to_onehot=6)
-    post_label = AsDiscrete(to_onehot=6)
+    post_pred = AsDiscrete(argmax=True, to_onehot=args.num_class)
+    post_label = AsDiscrete(to_onehot=args.num_class)
 
     # 创建输出目录
     os.makedirs(output_dir, exist_ok=True)
@@ -190,10 +190,10 @@ def train(train_loader, val_loader, args, writer):
 
 def validation(model, val_loader, epoch_idx, args, target_ids=None):
     model.eval()
-    post_label = AsDiscrete(to_onehot=6)
-    post_pred = AsDiscrete(argmax=True, to_onehot=6)
-    dice_metric = DiceMetric(include_background=True, reduction="mean", get_not_nans=False, num_classes=6)
-    classwise_dice = DiceMetric(include_background=True, reduction='none', get_not_nans=False, num_classes=6)
+    post_label = AsDiscrete(to_onehot=args.num_class)
+    post_pred = AsDiscrete(argmax=True, to_onehot=args.num_class)
+    dice_metric = DiceMetric(include_background=True, reduction="mean", get_not_nans=False, num_classes=args.num_class)
+    classwise_dice = DiceMetric(include_background=True, reduction='none', get_not_nans=False, num_classes=args.num_class)
     epoch_iterator_val = tqdm(val_loader, desc="Validate (X / X Steps) (dice=X.X)", dynamic_ncols=True)
 
     with torch.no_grad():
@@ -281,6 +281,8 @@ def main():
     paser.add_argument('--merging_type', choices=['maxpool', 'avgpool', 'maxavgpool', 'conv', 'img_conv'], default=None)
     paser.add_argument('--use_ln', action='store_true', help='if specify, use LayerNorm for conv-Merging, else use InstanceNorm, !!!now for ConvOnlyMerging!!!')
     paser.add_argument('--ref_weight', default=None, help='path of trained model')
+    paser.add_argument('--num_class', type=int, default=6, help='n-class seg')
+    paser.add_argument('--label_path', default='BSHD_src_data/label', help='label path')
      
     paser.add_argument('--css_skip', action='store_true', help='using css skip connection')
     paser.add_argument('--use_1x1_conv_for_skip', action='store_true', help='use 1x1 conv3d to change channel in skip connection')

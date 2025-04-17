@@ -858,6 +858,70 @@ def process_single_file(input_path, output_path, label_mapping):
     except Exception as e:
         print(f"处理 {input_path} 时出错：{str(e)}")
 
+
+def select_slice(merging, skip, merging_skip, output_dir):
+    os.makedirs(output_dir, exist_ok=True)
+    merging_list = os.listdir(merging)
+    skip_list = os.listdir(skip)
+    merging_skip_list = os.listdir(merging_skip)
+    for j, i in tqdm(enumerate(merging_skip_list)): 
+        if i in merging_list:
+            if i in skip_list:
+                shutil.copy(os.path.join(merging, i), os.path.join(output_dir, str(j)+'-merging-'+i))
+                shutil.copy(os.path.join(skip, i), os.path.join(output_dir, str(j)+'-skip-'+i))
+                shutil.copy(os.path.join(merging_skip, i), os.path.join(output_dir, str(j)+'-merging_skip-'+i))
+
+
+
+def plt_polt():
+# 数据准备
+    categories = [1, 2, 3, 3, 4, 5]  # 横轴：亚型数量
+    group_labels = ['All ICH', 'IVH+IPH', 'EDH+IPH+IVH', 'EDH+SAH+SDH', 
+                'EDH+IPH+IVH+SAH', 'All 5 classes']
+
+    # 两组数据序列
+    groupA_dice = [56.44, 56.22, 45.13, 38.44, 34.90]  # 含大出血的组合
+    groupB_dice = [56.44, 56.22, 21.73, 38.44, 34.90]  # 纯小微出血组合
+
+    plt.figure(figsize=(10, 6))
+
+    # 绘制第一条折线（含大出血的组合）
+    line1, = plt.plot([1,2,3,4,5], 
+                    [56.44, 56.22, 45.13, 38.44, 34.90],
+                    's--', color='#2c7bb6', markersize=10, linewidth=2,
+                    )
+
+    # 绘制第二条折线（纯小微出血组合）
+    line2, = plt.plot([3], [21.73], 
+                    'D:', color='#d7191c', markersize=10, linewidth=2,
+                    )
+
+    # 坐标轴设置
+    plt.xticks([1,2,3,4,5], 
+            ['Single class', 'Two classes', 'Three classes', 
+            'Four classes', 'Five classes'],
+            fontsize=10)
+    plt.yticks(np.arange(0, 71, 10))
+    plt.ylabel('Average Dice Coefficient (%)', fontsize=12)
+    plt.xlabel('Number of Hemorrhage Subtypes', fontsize=12)
+
+    # 特殊标注三分类情况
+    plt.annotate('EDH+IPH+IVH', xy=(3,45), xytext=(3.2,47),
+                arrowprops=dict(arrowstyle="->", color='#2c7bb6'),
+                fontsize=10, color='#2c7bb6')
+    plt.annotate('EDH+SAH+SDH', xy=(3,21.7), xytext=(2.5,18),
+                arrowprops=dict(arrowstyle="->", color='#d7191c'),
+                fontsize=10, color='#d7191c')
+
+    # 图例与网格
+    # plt.legend(handles=[line1, line2], loc='upper right', fontsize=10)
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+
+    # 显示图形
+    plt.savefig('BSHD_src_data/ab_class.png', dpi=600)
+    # plt.show()
+        
 if __name__ == '__main__':
     # generate_data_list('BSHD_src_data/image/test',
     #                     'BSHD_src_data/label/test',
@@ -892,11 +956,16 @@ if __name__ == '__main__':
     # mv_log2file()
     # workflow = create_workflow()
     # workflow.render('css/chap6_final',  format='svg')
-    batch_remap_labels(
-        input_dir="BSHD_src_data/label/train",
-        output_dir="BSHD_src_data/1class_label/train",
-        label_mapping={1: 1, 2: 1, 3: 1, 4: 1, 5: 1},  # 示例映射：原2→1，原3→2
-    )
+    # batch_remap_labels(
+    #     input_dir="BSHD_src_data/label/train",
+    #     output_dir="BSHD_src_data/1class_label/train",
+    #     label_mapping={1: 1, 2: 1, 3: 1, 4: 1, 5: 1},  # 示例映射：原2→1，原3→2
+    # )
+    # select_slice(merging='BSHD_src_data/draw_ref_res/merging/css/3_threshold0.5', 
+    #              skip='BSHD_src_data/draw_ref_res/skip/css/3_threshold0.8', 
+    #              merging_skip='BSHD_src_data/draw_ref_res/merging-skip/css/3_threshold0.8', 
+    #              output_dir='/home/xiang/user/user_group/caoshangshang/RushBin/MONAI/BSHD_src_data/draw_ref_res/out/3')
+    plt_polt()
     pass
 
 
